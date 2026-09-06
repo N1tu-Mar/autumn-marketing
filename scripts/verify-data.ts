@@ -173,6 +173,25 @@ async function main() {
     propertyId,
   );
 
+  const { count: propertyCount } = await db
+    .from("properties")
+    .select("id", { count: "exact", head: true });
+  const bookedAt = bookings.map((b) => b.booked_at).sort();
+  const allMetricDates = [...new Set(metrics.map((m) => m.metric_date))].sort();
+
+  console.log("\nHosted database inventory");
+  console.log(`  Host                     ${host}`);
+  console.log(`  Properties               ${propertyCount ?? 0}`);
+  console.log(`  Property under test      ${(property as { name: string }).name} (${roomCount} rooms, ${timezone})`);
+  console.log(`  Campaigns                ${campaigns.length}`);
+  console.log(`  Bookings                 ${bookings.length}`);
+  console.log(`  Earliest booking         ${bookedAt[0] ?? "n/a"}`);
+  console.log(`  Latest booking           ${bookedAt[bookedAt.length - 1] ?? "n/a"}`);
+  console.log(`  Campaign metric rows     ${metrics.length}`);
+  console.log(`  Earliest metric date     ${allMetricDates[0] ?? "n/a"}`);
+  console.log(`  Latest metric date       ${allMetricDates[allMetricDates.length - 1] ?? "n/a"}`);
+  console.log(`  Distinct metric dates    ${allMetricDates.length}`);
+
   check("campaigns present", campaigns.length > 0, `${campaigns.length} campaigns`);
   check("campaign metrics present", metrics.length > 0, `${metrics.length} daily rows`);
   check("bookings present", bookings.length > 0, `${bookings.length} bookings`);
@@ -247,6 +266,15 @@ async function main() {
     nightsMismatch.length === 0 ? "" : `${nightsMismatch.length} rows disagree`,
   );
 
+  const bookedAfterArrival = bookings.filter(
+    (b) => Date.parse(b.booked_at) > Date.parse(`${b.check_in}T23:59:59Z`),
+  );
+  check(
+    "no booking is made after its own check-in date",
+    bookedAfterArrival.length === 0,
+    bookedAfterArrival.length === 0 ? "" : `${bookedAfterArrival.length} rows arrive before they are booked`,
+  );
+
   /* --------------------------------------------------- referential integrity */
 
   const campaignIds = new Set(campaigns.map((c) => c.id));
@@ -267,6 +295,17 @@ async function main() {
     orphanBookings.length === 0
       ? `${attributed.length} attributed of ${bookings.length}`
       : `${orphanBookings.length} unresolved`,
+  );
+
+  const strayAttribution = bookings.filter(
+    (b) => !b.attributed_to_autumn && b.campaign_id !== null,
+  );
+  check(
+    "unattributed bookings carry no campaign",
+    strayAttribution.length === 0,
+    strayAttribution.length === 0
+      ? `${bookings.length - attributed.length} unattributed`
+      : `${strayAttribution.length} rows claim a campaign`,
   );
 
   const duplicateDay = metrics.length !== new Set(
@@ -300,6 +339,21 @@ async function main() {
       `no night sells more than the property's ${roomCount} rooms`,
       worstCount <= roomCount,
       `busiest stored night ${worstNight || "n/a"} at ${worstCount}/${roomCount}`,
+    );
+
+    const stayNights = [...occupied.keys()].sort();
+    const spanDays =
+      stayNights.length === 0
+        ? 0
+        : Math.round(
+            (Date.parse(`${stayNights[stayNights.length - 1]}T00:00:00Z`) -
+              Date.parse(`${stayNights[0]}T00:00:00Z`)) / 86_400_000,
+          ) + 1;
+    const soldRoomNights = bookings.reduce((s, b) => s + b.room_nights, 0);
+    check(
+      "room nights fit the property's available inventory",
+      soldRoomNights <= roomCount * spanDays,
+      `${soldRoomNights.toLocaleString("en-US")} of ${(roomCount * spanDays).toLocaleString("en-US")} available across ${spanDays} nights`,
     );
   } else {
     check("property declares a room count", false, "room_count is null or zero");
@@ -408,16 +462,43 @@ async function main() {
       num(totals.clicks) >= num(totals.website_visits),
     `CTR ${((num(totals.clicks) / num(totals.impressions)) * 100).toFixed(2)}%`,
   );
+
+  // The rates the UI renders are divisions, never stored columns. Assert the
+  // identity itself, so a rate that stopped tracking its inputs would fail.
+  const displayedCtr = num(totals.clicks) / num(totals.impressions);
+  const displayedConversion = num(totals.bookings) / num(totals.website_visits);
+  const displayedRoas = num(totals.booking_revenue) / num(totals.ad_spend);
+  const displayedAbv = num(totals.booking_revenue) / num(totals.bookings);
+
   check(
-    "booking conversion is computable and below 100%",
-    num(totals.website_visits) > 0 &&
-      num(totals.bookings) / num(totals.website_visits) < 1,
-    `${((num(totals.bookings) / num(totals.website_visits)) * 100).toFixed(2)}%`,
+    "CTR == clicks / impressions, from the raw rows",
+    num(totals.impressions) > 0 && near(displayedCtr, rawClicks / rawImpressions, 1e-12),
+    `${(displayedCtr * 100).toFixed(2)}%`,
   );
   check(
-    "ROAS is computable from positive ad spend",
-    num(totals.ad_spend) > 0,
-    `${(num(totals.booking_revenue) / num(totals.ad_spend)).toFixed(2)}x`,
+    "booking conversion == bookings / website visits, and is below 100%",
+    num(totals.website_visits) > 0 &&
+      displayedConversion < 1 &&
+      near(displayedConversion, windowBookings.length / rawVisits, 1e-12),
+    `${(displayedConversion * 100).toFixed(2)}%`,
+  );
+  check(
+    "ROAS == attributed booking revenue / ad spend",
+    num(totals.ad_spend) > 0 && near(displayedRoas, rawRevenue / rawSpend, 1e-6),
+    `${displayedRoas.toFixed(2)}x on ${money(num(totals.ad_spend))} spend`,
+  );
+  check(
+    "average booking value == revenue / bookings",
+    num(totals.bookings) > 0 &&
+      near(displayedAbv, rawRevenue / windowBookings.length, 1e-6),
+    `${money(displayedAbv)}`,
+  );
+
+  const directRevenue = bookings.reduce((s, b) => s + num(b.booking_value), 0);
+  check(
+    "attributed revenue is a subset of all direct booking revenue",
+    num(totals.booking_revenue) <= directRevenue + 0.01,
+    `${money(num(totals.booking_revenue))} attributed of ${money(directRevenue)} direct`,
   );
 
   /* ------------------------------------------------------ narrative inputs */
