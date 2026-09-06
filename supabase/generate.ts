@@ -4,22 +4,42 @@
  * Given a fixed seed, this produces byte-identical rows every run, so
  * `npm run seed` is repeatable and reviewable. Nothing here runs at request
  * time — the output is written to Postgres and the app reads it back.
+ *
+ * Hotel economics are generated before marketing, and a room-night ledger is
+ * the spine of the whole thing:
+ *
+ *   1. every night gets a target number of sold rooms from the occupancy model
+ *   2. marketing runs forward: impressions -> clicks -> visits -> bookings
+ *   3. each attributed booking must CLAIM inventory for every night of its stay
+ *   4. OTA and unattributed-direct stays fill whatever the target still needs
+ *
+ * No night can ever exceed the property's 19 rooms, because a stay that cannot
+ * find inventory is shifted and then dropped rather than overbooked.
  */
 import {
+  BRAND_CPC_STEP,
+  BUDGET_SHIFT,
   CAMPAIGNS,
+  DESTINATION_TREND,
   DEVICES,
+  DIRECT_BOOKING_SHARE,
   DISCOVERY_EXPANSION,
+  EVENTS,
+  LEAD_TIME,
   MARKETS,
   MONTH_ADR,
-  MONTH_DEMAND,
+  MONTH_OCCUPANCY,
   NIGHT_WEIGHTS,
   PEAK_NIGHT_WEIGHTS,
+  PROGRAM_STRENGTH,
   PROPERTY,
+  ROOM_COUNT,
+  SEASONAL_CPC,
   SEED_END,
   SEED_START,
   SOFT_PATCH,
+  WEEKDAY_ADR,
   WEEKDAY_DEMAND,
-  YEAR_STRENGTH,
   type CampaignSpec,
 } from "./seed-model";
 
@@ -41,6 +61,7 @@ type Rng = () => number;
 const between = (rng: Rng, lo: number, hi: number) => lo + rng() * (hi - lo);
 /** Multiplicative jitter centred on 1. */
 const jitter = (rng: Rng, spread: number) => 1 + (rng() * 2 - 1) * spread;
+const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
 
 function pickWeighted<T extends { weight: number }>(rng: Rng, items: T[]): T {
   const total = items.reduce((sum, i) => sum + i.weight, 0);
@@ -84,12 +105,15 @@ export function isoDate(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
 
+function parseDay(iso: string): Date {
+  return new Date(`${iso}T00:00:00Z`);
+}
+
 /** Iterate calendar days in UTC; dates carry no time component. */
-function eachDay(from: string, to: string): Date[] {
+function eachDay(from: Date, to: Date): Date[] {
   const out: Date[] = [];
-  const cursor = new Date(`${from}T00:00:00Z`);
-  const end = new Date(`${to}T00:00:00Z`);
-  while (cursor <= end) {
+  const cursor = new Date(from);
+  while (cursor <= to) {
     out.push(new Date(cursor));
     cursor.setUTCDate(cursor.getUTCDate() + 1);
   }
@@ -133,16 +157,61 @@ export function zonedWallToUtc(
 }
 
 const inWindow = (day: Date, from: string, to: string) =>
-  day >= new Date(`${from}T00:00:00Z`) && day <= new Date(`${to}T00:00:00Z`);
+  day >= parseDay(from) && day <= parseDay(to);
 
-/* ------------------------------------------------------------ demand model */
+const onOrAfter = (day: Date, from: string) => day >= parseDay(from);
 
-function demandFor(day: Date, rng: Rng): number {
-  const month = day.getUTCMonth();
-  const year = day.getUTCFullYear();
-  const season = MONTH_DEMAND[month];
+/* ------------------------------------------------------ hotel demand model */
+
+/** Stays can start after the metric window closes, so the ledger runs longer. */
+const LEDGER_HORIZON_DAYS = 120;
+
+function eventFactor(day: Date, field: "demand" | "adr"): number {
+  let factor = 1;
+  for (const event of EVENTS) {
+    if (inWindow(day, event.from, event.to)) factor *= event[field];
+  }
+  return factor;
+}
+
+/** Share of the 19 rooms sold on this night. Never above 1. */
+function occupancyFor(day: Date, rng: Rng): number {
+  const season = MONTH_OCCUPANCY[day.getUTCMonth()];
   const weekday = WEEKDAY_DEMAND[day.getUTCDay()];
-  const strength = YEAR_STRENGTH[year] ?? 1;
+  const trend = DESTINATION_TREND[day.getUTCFullYear()] ?? 1;
+  const soft = inWindow(day, SOFT_PATCH.from, SOFT_PATCH.to)
+    ? SOFT_PATCH.multiplier
+    : 1;
+  const raw =
+    season * weekday * trend * soft * eventFactor(day, "demand") * jitter(rng, 0.12);
+  return clamp(raw, 0, 1);
+}
+
+/** Modeled achieved nightly rate for this date. */
+function adrFor(day: Date, rng: Rng): number {
+  const drift = 1 + 0.035 * (day.getUTCFullYear() - 2024);
+  return (
+    MONTH_ADR[day.getUTCMonth()] *
+    WEEKDAY_ADR[day.getUTCDay()] *
+    eventFactor(day, "adr") *
+    drift *
+    jitter(rng, 0.06)
+  );
+}
+
+const MEAN_OCCUPANCY =
+  MONTH_OCCUPANCY.reduce((a, b) => a + b, 0) / MONTH_OCCUPANCY.length;
+
+/**
+ * How busy the advertising is on a given day. People shop a few weeks before
+ * they arrive, so campaign volume leads the arrival curve, and it swings far
+ * less across the week than arrivals do.
+ */
+function marketingIndex(day: Date, rng: Rng): number {
+  const shoppingFor = addDays(day, 21);
+  const season = MONTH_OCCUPANCY[shoppingFor.getUTCMonth()] / MEAN_OCCUPANCY;
+  const weekday = 1 + 0.25 * (WEEKDAY_DEMAND[day.getUTCDay()] - 1);
+  const strength = PROGRAM_STRENGTH[day.getUTCFullYear()] ?? 1;
   const soft = inWindow(day, SOFT_PATCH.from, SOFT_PATCH.to)
     ? SOFT_PATCH.multiplier
     : 1;
@@ -150,12 +219,67 @@ function demandFor(day: Date, rng: Rng): number {
 }
 
 function campaignActiveOn(campaign: CampaignSpec, day: Date): boolean {
-  if (day < new Date(`${campaign.started_at}T00:00:00Z`)) return false;
-  if (campaign.ended_at && day > new Date(`${campaign.ended_at}T00:00:00Z`)) {
-    return false;
-  }
+  if (day < parseDay(campaign.started_at)) return false;
+  if (campaign.ended_at && day > parseDay(campaign.ended_at)) return false;
   return true;
 }
+
+function leadTimeFor(month: number, rng: Rng): number {
+  const band =
+    month >= 5 && month <= 7
+      ? LEAD_TIME.peak
+      : month >= 3 && month <= 9
+        ? LEAD_TIME.shoulder
+        : LEAD_TIME.winter;
+  return Math.round(between(rng, band.min, band.max));
+}
+
+/* ------------------------------------------------------------ room ledger */
+
+/**
+ * The physical constraint, in one object. Nothing in this file writes a stay
+ * without going through `claim`, so the 19-room ceiling cannot be bypassed.
+ */
+class RoomLedger {
+  private readonly sold = new Map<string, number>();
+
+  constructor(private readonly rooms: number) {}
+
+  soldOn(iso: string): number {
+    return this.sold.get(iso) ?? 0;
+  }
+
+  canFit(start: Date, nights: number): boolean {
+    for (let i = 0; i < nights; i++) {
+      if (this.soldOn(isoDate(addDays(start, i))) >= this.rooms) return false;
+    }
+    return true;
+  }
+
+  claim(start: Date, nights: number): boolean {
+    if (!this.canFit(start, nights)) return false;
+    for (let i = 0; i < nights; i++) {
+      const iso = isoDate(addDays(start, i));
+      this.sold.set(iso, this.soldOn(iso) + 1);
+    }
+    return true;
+  }
+
+  /** The highest number of rooms sold on any single night. */
+  peak(): number {
+    let max = 0;
+    for (const n of this.sold.values()) max = Math.max(max, n);
+    return max;
+  }
+
+  totalRoomNights(): number {
+    let total = 0;
+    for (const n of this.sold.values()) total += n;
+    return total;
+  }
+}
+
+/* ------------------------------------------------------------------ output */
 
 export type GeneratedRows = {
   property: Record<string, unknown>;
@@ -163,6 +287,20 @@ export type GeneratedRows = {
   metrics: Array<Record<string, unknown>>;
   bookings: Array<Record<string, unknown>>;
   actions: Array<Record<string, unknown>>;
+  /** Build-time reconciliation figures. Never rendered by the app. */
+  audit: {
+    rooms: number;
+    ledgerDays: number;
+    availableRoomNights: number;
+    soldRoomNights: number;
+    peakRoomsSoldOnANight: number;
+    modeledRoomRevenue: number;
+    attributedRevenue: number;
+    attributedRoomNights: number;
+    directStays: number;
+    totalStays: number;
+    droppedForNoInventory: number;
+  };
 };
 
 export function generate(seed = 20260905): GeneratedRows {
@@ -187,16 +325,34 @@ export function generate(seed = 20260905): GeneratedRows {
     };
   });
 
+  const windowStart = parseDay(SEED_START);
+  const windowEnd = parseDay(SEED_END);
+  const bookingDays = eachDay(windowStart, windowEnd);
+  const stayDays = eachDay(windowStart, addDays(windowEnd, LEDGER_HORIZON_DAYS));
+
+  /* --- step 1: room inventory, seasonal demand, occupancy, ADR ----------- */
+
+  const targetSold = new Map<string, number>();
+  const nightlyAdr = new Map<string, number>();
+  for (const day of stayDays) {
+    const iso = isoDate(day);
+    targetSold.set(iso, Math.min(ROOM_COUNT, Math.round(ROOM_COUNT * occupancyFor(day, rng))));
+    nightlyAdr.set(iso, adrFor(day, rng));
+  }
+
+  const ledger = new RoomLedger(ROOM_COUNT);
   const metrics: Array<Record<string, unknown>> = [];
   const bookings: Array<Record<string, unknown>> = [];
-  const days = eachDay(SEED_START, SEED_END);
+  let droppedForNoInventory = 0;
+  const attributedStaysByYear = new Map<number, number>();
+  let attributedRoomNights = 0;
+  let attributedRevenue = 0;
 
-  for (const day of days) {
-    const demand = demandFor(day, rng);
+  /* --- step 2: marketing funnel, and the bookings it produces ------------ */
+
+  for (const day of bookingDays) {
+    const index = marketingIndex(day, rng);
     const month = day.getUTCMonth();
-    const year = day.getUTCFullYear();
-    const isPeak = month >= 5 && month <= 7;
-    const isWeekend = day.getUTCDay() === 5 || day.getUTCDay() === 6;
 
     for (const spec of CAMPAIGNS) {
       if (!campaignActiveOn(spec, day)) continue;
@@ -205,12 +361,20 @@ export function generate(seed = 20260905): GeneratedRows {
       const expansion =
         spec.key === "discovery" &&
         inWindow(day, DISCOVERY_EXPANSION.from, DISCOVERY_EXPANSION.to);
+      const shifted = onOrAfter(day, BUDGET_SHIFT.from);
+      const budget =
+        shifted && spec.key === "discovery"
+          ? BUDGET_SHIFT.discoveryImpressionMultiplier
+          : shifted && spec.key === "metasearch"
+            ? BUDGET_SHIFT.metasearchImpressionMultiplier
+            : 1;
 
       const impressions = Math.max(
         0,
         Math.round(
           spec.baseImpressions *
-            demand *
+            index *
+            budget *
             (expansion ? DISCOVERY_EXPANSION.impressionMultiplier : 1) *
             jitter(rng, 0.12),
         ),
@@ -223,8 +387,13 @@ export function generate(seed = 20260905): GeneratedRows {
         clicks,
         Math.round(clicks * spec.clickToVisit * jitter(rng, 0.05)),
       );
-      // Auctions cost more when everyone wants the same summer weekend.
-      const spend = clicks * spec.cpc * (0.85 + 0.3 * MONTH_DEMAND[month]) * jitter(rng, 0.1);
+
+      const cpc =
+        spec.cpc *
+        (spec.key === "brand" && onOrAfter(day, BRAND_CPC_STEP.from)
+          ? BRAND_CPC_STEP.cpcMultiplier
+          : 1);
+      const spend = clicks * cpc * SEASONAL_CPC[month] * jitter(rng, 0.1);
 
       metrics.push({
         property_id: propertyId,
@@ -239,39 +408,154 @@ export function generate(seed = 20260905): GeneratedRows {
       const conversion =
         spec.bookingConversion *
         (expansion ? DISCOVERY_EXPANSION.conversionMultiplier : 1) *
-        (isPeak ? 1.08 : 1) *
         jitter(rng, 0.18);
 
       const expected = websiteVisits * conversion;
       const count = Math.floor(expected) + (rng() < expected % 1 ? 1 : 0);
 
       for (let i = 0; i < count; i++) {
-        bookings.push(
-          makeBooking(rng, {
-            propertyId, campaignId, day, tz, spec, year, month, isPeak, isWeekend,
-          }),
-        );
+        const stay = placeStay(rng, ledger, day, month);
+        if (!stay) {
+          // The hotel had no room on any night this guest would accept.
+          droppedForNoInventory++;
+          continue;
+        }
+        const row = makeBooking(rng, {
+          propertyId, campaignId, bookedOn: day, tz, spec,
+          checkIn: stay.checkIn, nights: stay.nights, nightlyAdr,
+          attributed: true,
+        });
+        const year = stay.checkIn.getUTCFullYear();
+        attributedStaysByYear.set(year, (attributedStaysByYear.get(year) ?? 0) + 1);
+        attributedRoomNights += stay.nights;
+        attributedRevenue += Number(row.booking_value);
+        bookings.push(row);
       }
     }
+  }
 
-    // Direct bookings Autumn cannot connect to a campaign. They exist so the
-    // attribution filter in every query is doing real work.
-    const organicExpected = 0.85 * demand;
-    const organicCount =
-      Math.floor(organicExpected) + (rng() < organicExpected % 1 ? 1 : 0);
-    for (let i = 0; i < organicCount; i++) {
+  /* --- step 3: fill the rest of each night's demand ---------------------- */
+  //
+  // Everything Autumn did not produce: OTA reservations and direct bookings
+  // that arrived by phone, repeat stay or organic search. OTA stays consume
+  // rooms but are never written to `bookings` — that table is direct only,
+  // which is exactly what the dashboard queries assume.
+
+  const directProbability = fillDirectProbability(
+    stayDays, targetSold, attributedStaysByYear,
+  );
+
+  for (const day of stayDays) {
+    const iso = isoDate(day);
+    const target = targetSold.get(iso) ?? 0;
+    let guard = 0;
+    while (ledger.soldOn(iso) < target && guard++ < ROOM_COUNT * 2) {
+      const isPeak = day.getUTCMonth() >= 5 && day.getUTCMonth() <= 7;
+      const nights = pickIndex(rng, isPeak ? PEAK_NIGHT_WEIGHTS : NIGHT_WEIGHTS) + 1;
+      if (!ledger.claim(day, nights)) break;
+
+      const year = day.getUTCFullYear();
+      const isDirect = rng() < (directProbability.get(year) ?? 0.33);
+      const bookedOn = addDays(day, -leadTimeFor(day.getUTCMonth(), rng));
+      if (!isDirect) continue;
+      // A direct booking made before the dataset opens still occupies the
+      // room, but there is no row for it inside the reporting window.
+      if (bookedOn < windowStart || bookedOn > windowEnd) continue;
+
       bookings.push(
         makeBooking(rng, {
-          propertyId, campaignId: null, day, tz,
-          spec: CAMPAIGNS[0], year, month, isPeak, isWeekend,
-          attributed: false,
+          propertyId, campaignId: null, bookedOn, tz, spec: CAMPAIGNS[0],
+          checkIn: day, nights, nightlyAdr, attributed: false,
         }),
       );
     }
   }
 
   const actions = makeActions(rng, propertyId, campaignIds);
-  return { property, campaigns, metrics, bookings, actions };
+
+  const soldRoomNights = ledger.totalRoomNights();
+  let modeledRoomRevenue = 0;
+  for (const day of stayDays) {
+    const iso = isoDate(day);
+    modeledRoomRevenue += ledger.soldOn(iso) * (nightlyAdr.get(iso) ?? 0);
+  }
+
+  return {
+    property,
+    campaigns,
+    metrics,
+    bookings,
+    actions,
+    audit: {
+      rooms: ROOM_COUNT,
+      ledgerDays: stayDays.length,
+      availableRoomNights: ROOM_COUNT * stayDays.length,
+      soldRoomNights,
+      peakRoomsSoldOnANight: ledger.peak(),
+      modeledRoomRevenue: Math.round(modeledRoomRevenue),
+      attributedRevenue: Math.round(attributedRevenue),
+      attributedRoomNights,
+      directStays: bookings.length,
+      totalStays: Math.round(soldRoomNights / 2.25),
+      droppedForNoInventory,
+    },
+  };
+}
+
+/**
+ * Per year, how often a fill stay should be a direct booking so that direct
+ * lands near DIRECT_BOOKING_SHARE of all stays once Autumn's own bookings are
+ * counted. Derived, not hand-tuned, so changing the share stays consistent.
+ */
+function fillDirectProbability(
+  stayDays: Date[],
+  targetSold: Map<string, number>,
+  attributedStaysByYear: Map<number, number>,
+): Map<number, number> {
+  const nightsByYear = new Map<number, number>();
+  for (const day of stayDays) {
+    const year = day.getUTCFullYear();
+    nightsByYear.set(
+      year,
+      (nightsByYear.get(year) ?? 0) + (targetSold.get(isoDate(day)) ?? 0),
+    );
+  }
+  const averageStayLength = 2.25;
+  const out = new Map<number, number>();
+  for (const [year, nights] of nightsByYear) {
+    const totalStays = nights / averageStayLength;
+    const attributed = attributedStaysByYear.get(year) ?? 0;
+    const fillStays = Math.max(1, totalStays - attributed);
+    const wantedDirect = DIRECT_BOOKING_SHARE * totalStays - attributed;
+    out.set(year, clamp(wantedDirect / fillStays, 0.05, 0.95));
+  }
+  return out;
+}
+
+/**
+ * Find a stay this booking can actually occupy. Guests flex by a few days when
+ * their first choice is full; if a whole week is sold out, the booking is lost.
+ */
+function placeStay(
+  rng: Rng,
+  ledger: RoomLedger,
+  bookedOn: Date,
+  month: number,
+): { checkIn: Date; nights: number } | null {
+  const lead = leadTimeFor(month, rng);
+  let checkIn = addDays(bookedOn, lead);
+  // Leisure arrivals cluster on Thursday-Saturday.
+  if (rng() < 0.6) {
+    checkIn = addDays(checkIn, (5 - checkIn.getUTCDay() + 7) % 7);
+  }
+  const isPeak = checkIn.getUTCMonth() >= 5 && checkIn.getUTCMonth() <= 7;
+  const nights = pickIndex(rng, isPeak ? PEAK_NIGHT_WEIGHTS : NIGHT_WEIGHTS) + 1;
+
+  for (let shift = 0; shift <= 6; shift++) {
+    const candidate = addDays(checkIn, shift);
+    if (ledger.claim(candidate, nights)) return { checkIn: candidate, nights };
+  }
+  return null;
 }
 
 /* ---------------------------------------------------------------- bookings */
@@ -281,64 +565,55 @@ function makeBooking(
   ctx: {
     propertyId: string;
     campaignId: string | null;
-    day: Date;
+    bookedOn: Date;
     tz: string;
     spec: CampaignSpec;
-    year: number;
-    month: number;
-    isPeak: boolean;
-    isWeekend: boolean;
-    attributed?: boolean;
+    checkIn: Date;
+    nights: number;
+    nightlyAdr: Map<string, number>;
+    attributed: boolean;
   },
 ): Record<string, unknown> {
-  const { propertyId, campaignId, day, tz, spec, year, month, isPeak } = ctx;
-  const attributed = ctx.attributed ?? true;
+  const {
+    propertyId, campaignId, bookedOn, tz, spec, checkIn, nights, nightlyAdr, attributed,
+  } = ctx;
 
-  const nights =
-    pickIndex(rng, isPeak ? PEAK_NIGHT_WEIGHTS : NIGHT_WEIGHTS) + 1;
-
-  // Lead time stretches in peak season: summer weekends get booked early.
-  const leadDays = Math.round(
-    isPeak ? between(rng, 24, 92) : month >= 3 && month <= 9
-      ? between(rng, 11, 48)
-      : between(rng, 4, 30),
-  );
-  let checkIn = addDays(day, leadDays);
-  // Leisure arrivals cluster on Thursday-Saturday.
-  if (rng() < 0.6) {
-    const shift = (5 - checkIn.getUTCDay() + 7) % 7;
-    checkIn = addDays(checkIn, shift);
-  }
   const checkOut = addDays(checkIn, nights);
 
-  const arrivalMonth = checkIn.getUTCMonth();
-  const priceDrift = 1 + 0.035 * (year - 2024);
-  const weekendRate = checkIn.getUTCDay() >= 5 || checkIn.getUTCDay() === 4 ? 1.18 : 1;
-  const suite = rng() < 0.06 ? between(rng, 1.3, 1.55) : 1;
-  const adr =
-    MONTH_ADR[arrivalMonth] *
-    priceDrift *
-    weekendRate *
-    spec.adrFactor *
-    suite *
-    jitter(rng, 0.1);
-  const bookingValue = Math.max(95, Math.round(adr * nights * 100) / 100);
+  // Priced night by night, so a stay that spans a rate change is priced right.
+  const suite = rng() < 0.08 ? between(rng, 1.3, 1.6) : 1;
+  const rateNoise = jitter(rng, 0.08);
+  let value = 0;
+  for (let i = 0; i < nights; i++) {
+    const iso = isoDate(addDays(checkIn, i));
+    value += (nightlyAdr.get(iso) ?? MONTH_ADR[addDays(checkIn, i).getUTCMonth()]);
+  }
+  const bookingValue = Math.max(
+    95,
+    Math.round(value * spec.adrFactor * suite * rateNoise * 100) / 100,
+  );
 
+  const year = checkIn.getUTCFullYear();
   const marketWeights = MARKETS.map((m) => ({
     ...m,
     weight:
       m.weight *
       (year >= 2026 ? m.growth2026 : 1) *
-      (m.city === "Chicago" ? spec.chicagoTilt : 1),
+      (attributed && m.region !== "Michigan" ? spec.outStateTilt : 1),
   }));
   const market = pickWeighted(rng, marketWeights);
-  const device = pickWeighted(rng, DEVICES);
+
+  // Mobile brings the traffic, desktop closes the booking.
+  const device = pickWeighted(
+    rng,
+    DEVICES.map((d) => ({ ...d, weight: d.weight * d.conversionIndex })),
+  );
 
   // Booking traffic peaks late morning and again after dinner.
   const hour = rng() < 0.45
     ? Math.floor(between(rng, 9, 14))
     : Math.floor(between(rng, 18, 23));
-  const bookedAt = zonedWallToUtc(day, hour, Math.floor(rng() * 60), tz);
+  const bookedAt = zonedWallToUtc(bookedOn, hour, Math.floor(rng() * 60), tz);
 
   return {
     id: uuid(rng),
@@ -366,32 +641,35 @@ function makeActions(
   campaignIds: Map<string, string>,
 ): Array<Record<string, unknown>> {
   const rows: Array<[string, string, string, string, string, string | null]> = [
-    ["2025-04-14", "budget_shift", "Moved spend into summer weekends",
-      "Weekend arrivals convert best, so budget now front-loads Thursday through Saturday auctions.",
+    ["2024-11-04", "campaign_launch", "Launched a winter getaway campaign",
+      "November through March is the quietest stretch of the year, so a seasonal push now runs against Ice Breaker weekend and midweek winter stays.",
+      "completed", "winter"],
+    ["2025-04-08", "bidding", "Raised bids to defend the hotel name",
+      "Competitors began appearing on searches for the hotel by name. Brand Protection now holds top position, at a higher cost per click.",
+      "completed", "brand"],
+    ["2025-06-10", "creative", "Refreshed harbor and beach creative",
+      "Updated ad imagery and headlines around the harbor, the lighthouse walk and downtown for the summer season.",
       "completed", "discovery"],
-    ["2025-07-02", "creative", "Refreshed lakefront creative",
-      "Updated ad imagery and headlines around the harbor and beach access for the summer season.",
+    ["2025-07-15", "bidding", "Held rate on Blueberry Festival weekend",
+      "The August festival weekend fills early, so bids now protect placement only where the direct rate beats the OTAs.",
+      "completed", "metasearch"],
+    ["2025-10-01", "budget_shift", "Moved budget from Discovery into Metasearch",
+      "Non-brand search was buying expensive clicks that rarely booked. That spend now sits in metasearch, where travelers already have dates in mind.",
+      "completed", "metasearch"],
+    ["2025-11-12", "budget_shift", "Trimmed pacing through a soft autumn",
+      "Demand ran below last year after leaf season, so spend was reduced to protect efficiency rather than chase volume.",
       "completed", "discovery"],
-    ["2025-10-20", "budget_shift", "Trimmed spend through the shoulder season",
-      "Demand softens after leaf season, so pacing was reduced to protect efficiency rather than chase volume.",
-      "completed", "discovery"],
-    ["2026-01-16", "bidding", "Raised bids on high-intent brand searches",
-      "Brand Protection keeps the strongest booking rate, so it now holds top position on searches for the inn by name.",
-      "active", "brand"],
     ["2026-03-09", "market_expansion", "Opened Discovery into new metros",
-      "Widened Discovery & Competitors beyond Michigan to reach travelers comparing lake towns.",
+      "Widened Discovery & Competitors beyond Michigan toward Indianapolis, Columbus and Nashville to reach travelers comparing lake towns.",
       "monitoring", "discovery"],
-    ["2026-05-21", "market_focus", "Growing Chicago demand",
-      "Chicago guests book longer stays than average, so campaign emphasis increased in that market.",
+    ["2026-05-21", "market_focus", "Leaning into in-state demand",
+      "Michigan metros are producing more stays than the Chicago corridor. Grand Rapids and Detroit now carry more of the budget.",
       "active", "metasearch"],
     ["2026-06-18", "landing_page", "Testing a faster booking page",
       "More visitors are arriving than last year while fewer complete a booking, so a shorter booking flow is in test.",
       "monitoring", null],
-    ["2026-07-30", "bidding", "Protecting rate on peak weekends",
-      "Metasearch bids now hold placement on sold-out weekends only when direct rate is competitive.",
-      "active", "metasearch"],
     ["2026-08-24", "creative", "Built shoulder-season stay messaging",
-      "September and October creative now leads with quieter beaches and lower midweek rates.",
+      "September and October creative now leads with quieter beaches, the historic building and lower midweek rates.",
       "active", "retargeting"],
   ];
 

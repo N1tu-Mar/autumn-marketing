@@ -3,7 +3,7 @@ import { getSupabase } from "@/lib/supabase/server";
 import type { Property } from "@/types/database";
 
 /** The demo tenant. A property switcher is out of scope for this assignment. */
-export const DEMO_PROPERTY_SLUG = "harborlight-inn";
+export const DEMO_PROPERTY_SLUG = "historic-hotel-nichols";
 
 export class NoDataError extends Error {}
 

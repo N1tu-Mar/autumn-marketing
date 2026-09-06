@@ -12,7 +12,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { config } from "dotenv";
 import { generate } from "./generate";
-import { PROPERTY, SEED_END, SEED_START } from "./seed-model";
+import { PROPERTY, ROOM_COUNT, SEED_END, SEED_START } from "./seed-model";
 
 config({ path: ".env.local", quiet: true });
 
@@ -52,12 +52,39 @@ async function main() {
   console.log("Generating dataset…");
   const data = generate();
 
+  // Capacity gate. A dataset that oversells the building is never written —
+  // the run fails loudly instead of quietly shipping impossible numbers.
+  const { audit } = data;
+  const violations: string[] = [];
+  if (audit.peakRoomsSoldOnANight > ROOM_COUNT) {
+    violations.push(
+      `a night sold ${audit.peakRoomsSoldOnANight} rooms; the property has ${ROOM_COUNT}`,
+    );
+  }
+  if (audit.soldRoomNights > audit.availableRoomNights) {
+    violations.push(
+      `${audit.soldRoomNights} room nights sold against ${audit.availableRoomNights} available`,
+    );
+  }
+  if (audit.attributedRevenue > audit.modeledRoomRevenue) {
+    violations.push(
+      "Autumn-attributed revenue exceeds total modeled property revenue",
+    );
+  }
+  if (violations.length > 0) {
+    throw new Error(`capacity check failed:\n  - ${violations.join("\n  - ")}`);
+  }
+
   console.log(`Clearing any existing "${PROPERTY.slug}" demo data…`);
-  const { error: deleteError } = await db
-    .from("properties")
-    .delete()
-    .eq("slug", PROPERTY.slug);
-  if (deleteError) throw new Error(`delete failed: ${deleteError.message}`);
+  // By slug for a re-seed, and by id because the generator's first UUID is a
+  // function of the seed — an earlier demo property can still be holding it.
+  for (const [column, value] of [
+    ["slug", PROPERTY.slug],
+    ["id", data.property.id as string],
+  ] as const) {
+    const { error } = await db.from("properties").delete().eq(column, value);
+    if (error) throw new Error(`delete by ${column} failed: ${error.message}`);
+  }
 
   console.log("Writing rows…");
   await insertAll("properties", [data.property]);
@@ -84,12 +111,22 @@ async function main() {
       `  Days with metrics: ${days}`,
       `  Campaigns:         ${data.campaigns.length}`,
       `  Metric rows:       ${data.metrics.length}`,
-      `  Bookings:          ${data.bookings.length} (${attributed.length} attributed to Autumn)`,
+      `  Bookings:          ${data.bookings.length} direct (${attributed.length} attributed to Autumn)`,
       `  Attributed revenue: $${Math.round(revenue).toLocaleString("en-US")}`,
       `  Autumn actions:    ${data.actions.length}`,
+      "",
+      "  Capacity reconciliation",
+      `    Rooms:              ${audit.rooms}`,
+      `    Busiest night:      ${audit.peakRoomsSoldOnANight}/${audit.rooms} rooms sold`,
+      `    Room nights sold:   ${audit.soldRoomNights.toLocaleString("en-US")} of ${audit.availableRoomNights.toLocaleString("en-US")} available (${((audit.soldRoomNights / audit.availableRoomNights) * 100).toFixed(1)}% occupancy)`,
+      `    Modeled room revenue: $${audit.modeledRoomRevenue.toLocaleString("en-US")} across all channels`,
+      `    Autumn share of it: ${((audit.attributedRevenue / audit.modeledRoomRevenue) * 100).toFixed(1)}%`,
+      `    Bookings lost to a full hotel: ${audit.droppedForNoInventory}`,
+      "",
       `  Elapsed:           ${((Date.now() - started) / 1000).toFixed(1)}s`,
       "",
       "This summary is a build-time log. The dashboard recomputes everything from the rows above.",
+      "Modeled room revenue is a seed-time figure only — it is never written to the database or rendered.",
       "",
     ].join("\n"),
   );

@@ -61,7 +61,7 @@ function take(args: {
   priorMarkets?: FeederMarketRow[];
 }) {
   return generateAutumnTake({
-    propertyName: "Harborlight",
+    propertyName: "Hotel Nichols",
     metrics: compareMetrics(args.current, args.prior),
     campaigns: toCampaignBreakdown(args.campaigns ?? []),
     markets: toMarketBreakdown(args.markets ?? [], args.priorMarkets ?? []),
@@ -182,7 +182,7 @@ describe("take and supporting observation", () => {
     const prior = totals({ website_visits: 3_500 });
     const metrics = compareMetrics(current, prior);
     const narrative = generateAutumnTake({
-      propertyName: "Harborlight",
+      propertyName: "Hotel Nichols",
       metrics,
       campaigns: [],
       markets: [],

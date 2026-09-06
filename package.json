@@ -10,7 +10,8 @@
     "seed": "tsx supabase/seed.ts",
     "seed:verify": "tsx supabase/verify.ts",
     "db:push": "supabase db push",
-    "test": "node --import tsx --test tests/*.test.ts"
+    "test": "node --import tsx --test tests/*.test.ts",
+    "verify:data": "tsx scripts/verify-data.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.115.0",

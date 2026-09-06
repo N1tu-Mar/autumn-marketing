@@ -8,7 +8,7 @@
  */
 import { createClient } from "@supabase/supabase-js";
 import { config } from "dotenv";
-import { PROPERTY } from "./seed-model";
+import { PROPERTY, ROOM_COUNT } from "./seed-model";
 
 config({ path: ".env.local", quiet: true });
 
@@ -100,7 +100,7 @@ async function main() {
   );
   const types = new Set(campaigns.map((c) => c.campaign_type));
 
-  check("720+ unique metric dates", uniqueDates.size >= 720, `${uniqueDates.size} dates`);
+  check("760+ unique metric dates", uniqueDates.size >= 760, `${uniqueDates.size} dates`);
   check("at least 2 calendar years", years.size >= 2, [...years].sort().join(", "));
   check(
     "impressions >= clicks >= website visits",
@@ -139,6 +139,84 @@ async function main() {
   check("multiple feeder markets", cities.size >= 5, `${cities.size} markets`);
   check("multiple campaign types", types.size >= 3, [...types].join(", "));
   check("Autumn actions present", (actionCount ?? 0) > 0, `${actionCount ?? 0} actions`);
+
+  /* ---------------------------------------- capacity and revenue reconciliation */
+  //
+  // `bookings` holds direct reservations only, so what is stored is a subset of
+  // the property's occupancy. These are therefore necessary conditions: if the
+  // stored subset alone breaks them, the generator is overselling the hotel.
+
+  const occupiedByNight = new Map<string, number>();
+  for (const b of bookings) {
+    const start = new Date(`${b.check_in}T00:00:00Z`);
+    for (let i = 0; i < b.room_nights; i++) {
+      const night = new Date(start);
+      night.setUTCDate(night.getUTCDate() + i);
+      const iso = night.toISOString().slice(0, 10);
+      occupiedByNight.set(iso, (occupiedByNight.get(iso) ?? 0) + 1);
+    }
+  }
+  let worstNight = "";
+  let worstCount = 0;
+  for (const [iso, count] of occupiedByNight) {
+    if (count > worstCount) {
+      worstCount = count;
+      worstNight = iso;
+    }
+  }
+
+  const stayNights = [...occupiedByNight.keys()].sort();
+  const spanDays =
+    stayNights.length === 0
+      ? 0
+      : Math.round(
+          (Date.parse(`${stayNights[stayNights.length - 1]}T00:00:00Z`) -
+            Date.parse(`${stayNights[0]}T00:00:00Z`)) /
+            86_400_000,
+        ) + 1;
+  const soldRoomNights = bookings.reduce((sum, b) => sum + b.room_nights, 0);
+  const availableRoomNights = ROOM_COUNT * spanDays;
+
+  const attributedBookings = bookings.filter((b) => b.attributed_to_autumn);
+  const attributedRevenue = attributedBookings.reduce(
+    (sum, b) => sum + Number(b.booking_value),
+    0,
+  );
+  const directRevenue = bookings.reduce((sum, b) => sum + Number(b.booking_value), 0);
+  const spend = metrics.reduce((sum, m) => sum + Number(m.ad_spend), 0);
+  const usd = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
+
+  check(
+    `no night sells more than ${ROOM_COUNT} rooms`,
+    worstCount <= ROOM_COUNT,
+    `busiest stored night ${worstNight || "n/a"} at ${worstCount}/${ROOM_COUNT} rooms`,
+  );
+  check(
+    "room nights fit available inventory",
+    soldRoomNights <= availableRoomNights,
+    `${soldRoomNights.toLocaleString("en-US")} of ${availableRoomNights.toLocaleString("en-US")} available` +
+      (availableRoomNights > 0
+        ? ` (${((soldRoomNights / availableRoomNights) * 100).toFixed(1)}% from direct rows alone)`
+        : ""),
+  );
+  check(
+    "every booking value is consistent with its stay length",
+    bookings.every((b) => {
+      const perNight = Number(b.booking_value) / b.room_nights;
+      return perNight >= 80 && perNight <= 900;
+    }),
+    "nightly rate implied by booking_value stays inside a plausible band",
+  );
+  check(
+    "attributed revenue is a subset of direct revenue",
+    attributedRevenue <= directRevenue,
+    `${usd(attributedRevenue)} attributed of ${usd(directRevenue)} direct`,
+  );
+  check(
+    "ad spend stays below attributed revenue",
+    spend < attributedRevenue,
+    `${usd(spend)} spend, ${usd(attributedRevenue)} attributed — ROAS ${(attributedRevenue / spend).toFixed(2)}x`,
+  );
 
   let failed = 0;
   console.log(`\nVerifying ${property.name}\n`);

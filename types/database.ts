@@ -17,7 +17,7 @@ export type Property = {
   room_count: number | null;
   /** Optional property photograph. Null falls back to a monogram. */
   image_url: string | null;
-  /** How the property is referred to in prose, e.g. "Harborlight". */
+  /** How the property is referred to in prose, e.g. "Hotel Nichols". */
   short_name: string | null;
 };
 
