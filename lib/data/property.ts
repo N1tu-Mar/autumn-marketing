@@ -11,7 +11,7 @@ export class NoDataError extends Error {}
 export const getProperty = cache(async (): Promise<Property> => {
   const { data, error } = await getSupabase()
     .from("properties")
-    .select("id, slug, name, city, state, country, timezone, room_count")
+    .select("id, slug, name, city, state, country, timezone, room_count, image_url, short_name")
     .eq("slug", DEMO_PROPERTY_SLUG)
     .maybeSingle();
 

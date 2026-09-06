@@ -9,7 +9,8 @@
     "lint": "eslint",
     "seed": "tsx supabase/seed.ts",
     "seed:verify": "tsx supabase/verify.ts",
-    "db:push": "supabase db push"
+    "db:push": "supabase db push",
+    "test": "node --import tsx --test tests/*.test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.115.0",

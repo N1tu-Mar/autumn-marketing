@@ -4,26 +4,49 @@ import type { CampaignType } from "@/types/database";
  * Product language, not data. Campaign names and types come from the database;
  * these are the plain-English explanations shown beside them.
  */
-export const CAMPAIGN_COPY: Record<CampaignType, { label: string; description: string }> = {
+/**
+ * Guest behaviour is the primary label; the industry term stays as the
+ * secondary one. An owner recognises "already looking for you" long before
+ * they recognise "brand protection", but the technical name still has to be
+ * visible so the two vocabularies stay connected.
+ */
+export const CAMPAIGN_COPY: Record<
+  CampaignType,
+  {
+    /** Reads as the subject of a sentence in Autumn's take. */
+    sourcePhrase: string;
+    guestLabel: string;
+    label: string;
+    description: string;
+  }
+> = {
   brand_protection: {
+    sourcePhrase: "Travelers already searching for you by name",
+    guestLabel: "Already looking for you",
     label: "Brand Protection",
     description:
-      "Ads shown to travelers already searching for your hotel or brand by name.",
+      "Travelers searching for your property or brand by name.",
   },
   discovery: {
+    sourcePhrase: "Travelers discovering you while comparing places to stay",
+    guestLabel: "Discovering your property",
     label: "Discovery & Competitors",
     description:
-      "Ads that help travelers discover your property while they compare places to stay.",
+      "Travelers finding your hotel while exploring or comparing alternatives.",
   },
   metasearch: {
+    sourcePhrase: "Travelers comparing rates inside travel search",
+    guestLabel: "Comparing places to stay",
     label: "Metasearch",
     description:
-      "Your listing shown inside travel search and rate-comparison sites, where intent is high.",
+      "High-intent travelers seeing your hotel inside travel-search and rate-comparison experiences.",
   },
   retargeting: {
+    sourcePhrase: "Travelers returning after an earlier visit",
+    guestLabel: "Coming back after looking before",
     label: "Retargeting",
     description:
-      "Ads that reconnect with travelers who already looked at your property.",
+      "Travelers who previously showed interest and were encouraged to return.",
   },
 };
 

@@ -64,11 +64,37 @@ export type ComparedMetrics = {
   averageStayNights: Delta;
 };
 
+export type InsightTopic =
+  | "conversion"
+  | "revenue"
+  | "market"
+  | "campaign"
+  | "stay"
+  | "steady";
+
 export type Insight = {
   id: string;
+  /** What the insight is about, so the narrative can avoid repeating it. */
+  topic: InsightTopic;
   tone: "concern" | "positive" | "neutral";
   title: string;
   detail: string;
+};
+
+/**
+ * A derived conclusion about the period, produced by rules over queried
+ * values. Components render it; they never compute it.
+ */
+export type AutumnNarrative = {
+  headline: string;
+  body: string;
+  tone: "positive" | "neutral" | "watch";
+  evidence: Array<{
+    type: "market" | "campaign" | "revenue" | "conversion";
+    id?: string;
+    currentValue?: number;
+    comparisonValue?: number;
+  }>;
 };
 
 export type MarketBreakdown = FeederMarketRow & {
@@ -90,6 +116,7 @@ export type DashboardData = {
   dataThrough: string;
   metrics: ComparedMetrics;
   trend: { current: TrendRow[]; comparison: TrendRow[] };
+  narrative: AutumnNarrative | null;
   insights: Insight[];
   actions: AutumnAction[];
 };
@@ -101,4 +128,5 @@ export type BookingsData = {
   metrics: ComparedMetrics;
   campaigns: CampaignBreakdown[];
   markets: MarketBreakdown[];
+  narrative: AutumnNarrative | null;
 };

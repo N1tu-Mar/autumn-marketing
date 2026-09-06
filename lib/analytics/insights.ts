@@ -58,6 +58,7 @@ export function generateInsights(input: {
   ) {
     candidates.push({
       id: "traffic-up-conversion-down",
+      topic: "conversion",
       tone: "concern",
       title: "More travelers are visiting, but fewer are booking",
       detail:
@@ -82,6 +83,7 @@ export function generateInsights(input: {
   if (risingMarket) {
     candidates.push({
       id: `market-growth-${risingMarket.guest_city}`,
+      topic: "market",
       tone: "positive",
       title: `${risingMarket.guest_city} led the growth`,
       detail:
@@ -103,6 +105,7 @@ export function generateInsights(input: {
   if (fallingMarket && !risingMarket) {
     candidates.push({
       id: `market-decline-${fallingMarket.guest_city}`,
+      topic: "market",
       tone: "concern",
       title: `${fallingMarket.guest_city} sent fewer guests`,
       detail:
@@ -115,6 +118,7 @@ export function generateInsights(input: {
   if (topCampaign && topCampaign.revenueShare >= THRESHOLDS.campaignShare) {
     candidates.push({
       id: `campaign-${topCampaign.campaign_id}`,
+      topic: "campaign",
       tone: "neutral",
       title: `${topCampaign.campaign_name} was your strongest strategy`,
       detail:
@@ -129,6 +133,7 @@ export function generateInsights(input: {
   if (stayChange !== null && stayChange >= THRESHOLDS.stayLength) {
     candidates.push({
       id: "longer-stays",
+      topic: "stay",
       tone: "positive",
       title: "Guests are booking longer stays",
       detail:
@@ -138,6 +143,7 @@ export function generateInsights(input: {
   } else if (valueChange !== null && valueChange >= THRESHOLDS.bookingValue) {
     candidates.push({
       id: "higher-booking-value",
+      topic: "stay",
       tone: "positive",
       title: "Each booking is worth more",
       detail:
@@ -152,6 +158,7 @@ export function generateInsights(input: {
     const revenueChange = metrics.revenue.ratio;
     candidates.push({
       id: "steady",
+      topic: "steady",
       tone: "neutral",
       title: "Nothing moved much this period",
       detail:
@@ -162,15 +169,6 @@ export function generateInsights(input: {
   }
 
   return candidates.slice(0, MAX_INSIGHTS);
-}
-
-/** The section heading follows the result rather than announcing a category. */
-export function insightsHeading(metrics: ComparedMetrics): string {
-  const revenue = metrics.revenue.ratio;
-  if (revenue === null) return "What stood out";
-  if (revenue >= THRESHOLDS.steady) return "What's behind the growth";
-  if (revenue <= -THRESHOLDS.steady) return "What's behind the change";
-  return "What stood out";
 }
 
 /* --------------------------------------------------------- hero status ---- */

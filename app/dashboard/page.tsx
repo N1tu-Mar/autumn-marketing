@@ -1,10 +1,10 @@
 import { AutumnActions } from "@/components/dashboard/AutumnActions";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
-import { InsightsSection } from "@/components/dashboard/InsightsSection";
+import { WhatMattered } from "@/components/dashboard/WhatMattered";
 import { PerformanceHero } from "@/components/dashboard/PerformanceHero";
 import { PerformanceTrend } from "@/components/dashboard/PerformanceTrend";
 import { SetupNotice } from "@/components/ui/SetupNotice";
-import { insightsHeading } from "@/lib/analytics/insights";
+import { secondaryInsight } from "@/lib/analytics/narrative";
 import { rangeQuery } from "@/lib/analytics/range";
 import { getDashboardData } from "@/lib/data/overview";
 import { NoDataError } from "@/lib/data/property";
@@ -35,7 +35,8 @@ export default async function DashboardPage({
     throw error;
   }
 
-  const { property, range, dataThrough, metrics, trend, insights, actions } = data;
+  const { property, range, dataThrough, metrics, trend, insights, actions, narrative } =
+    data;
 
   return (
     <div className="min-h-screen">
@@ -63,8 +64,11 @@ export default async function DashboardPage({
           />
         </div>
 
-        <div className="mt-16 grid gap-14 border-t border-rule/70 pt-14 sm:mt-20 sm:pt-16 lg:grid-cols-2 lg:gap-16">
-          <InsightsSection heading={insightsHeading(metrics)} insights={insights} />
+        <div className="mt-16 grid gap-14 border-t border-rule/70 pt-14 sm:mt-20 sm:pt-16 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:gap-20">
+          <WhatMattered
+            narrative={narrative}
+            secondary={secondaryInsight(narrative, insights)}
+          />
           <AutumnActions actions={actions} timezone={property.timezone} />
         </div>
       </main>

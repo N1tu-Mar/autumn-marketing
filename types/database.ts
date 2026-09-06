@@ -15,6 +15,10 @@ export type Property = {
   country: string;
   timezone: string;
   room_count: number | null;
+  /** Optional property photograph. Null falls back to a monogram. */
+  image_url: string | null;
+  /** How the property is referred to in prose, e.g. "Harborlight". */
+  short_name: string | null;
 };
 
 export type Campaign = {

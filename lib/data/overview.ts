@@ -1,5 +1,6 @@
 import "server-only";
 import { generateInsights } from "@/lib/analytics/insights";
+import { generateAutumnTake } from "@/lib/analytics/narrative";
 import {
   compareMetrics,
   toCampaignBreakdown,
@@ -51,6 +52,8 @@ export async function getDashboardData(
   ]);
 
   const metrics = compareMetrics(currentTotals, priorTotals);
+  const campaigns = toCampaignBreakdown(campaignRows);
+  const markets = toMarketBreakdown(marketRows, priorMarketRows);
 
   return {
     property,
@@ -58,12 +61,13 @@ export async function getDashboardData(
     dataThrough,
     metrics,
     trend: { current: currentTrend, comparison: comparisonTrend },
-    insights: generateInsights({
+    narrative: generateAutumnTake({
+      propertyName: property.short_name ?? property.name,
       metrics,
-      campaigns: toCampaignBreakdown(campaignRows),
-      markets: toMarketBreakdown(marketRows, priorMarketRows),
-      range,
+      campaigns,
+      markets,
     }),
+    insights: generateInsights({ metrics, campaigns, markets, range }),
     actions,
   };
 }

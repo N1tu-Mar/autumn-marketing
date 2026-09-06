@@ -36,7 +36,14 @@ Concretely:
 - **Comparisons default to the same period last year.** A lake-town hotel
   compared against last month is being measured against the weather.
 - **Insights name concerns first.** If visits are up and the booking rate is
-  down, that card ranks above the revenue win.
+  down, that ranks above the revenue win.
+- **Autumn states a conclusion, not just facts.** A rule-based narrative layer
+  reads the same queried numbers and says what they mean in a sentence — which
+  strategy carried the period, which market produced the growth, or what is
+  worth watching. It is deterministic and template-based; there is no model
+  behind it and the UI never suggests otherwise.
+- **The leading strategy and leading market get the space.** Four campaigns at
+  equal visual weight hides the one that is actually carrying the period.
 - **"What Autumn is working on"** reads from an `autumn_actions` table, so the
   product feels like an operator rather than a report.
 
@@ -100,6 +107,10 @@ the SQL editor in order, then run `npm run seed`.
 | `bookings` | 1 row per booking | Value, room nights, stay dates, guest market, device, attribution |
 | `autumn_actions` | 1 row per action | What Autumn changed, when, and why |
 
+`properties` also carries `image_url` and `short_name` for presentation. Both
+are nullable — with no image the header falls back to a monogram drawn from the
+property name rather than to stock travel photography.
+
 No table stores a dashboard metric. There is no `dashboard_metrics` row, no
 stored CTR, no stored conversion rate, no stored revenue total. Every figure on
 both screens is aggregated from these facts at request time.
@@ -135,6 +146,7 @@ lib/data/queries.ts          one wrapper per function
       ↓
 lib/analytics/metrics.ts     one definition per derived metric
 lib/analytics/insights.ts    rule-based insight selection
+lib/analytics/narrative.ts   the conclusion: Autumn's take
       ↓
 lib/data/overview.ts | bookings.ts    parallel fetch per screen
       ↓
@@ -164,6 +176,23 @@ screens share one definition of every metric, a two-year range is one round trip
 instead of thousands of rows, and no query is silently truncated by a row limit.
 
 ---
+
+## Two layers of interpretation, kept separate
+
+**Autumn's take** (`lib/analytics/narrative.ts`) is *analysis*: a conclusion
+derived from the current period's queried numbers. **From your Autumn team**
+(`autumn_actions`) is *history*: work Autumn actually recorded doing. Blurring
+them would let the product imply it acted on something it only observed, so
+they are generated and rendered separately.
+
+The narrative layer refuses to assert cause. It will say a market accounted for
+growth; it will not say a campaign caused it. `npm test` covers the ways it
+could go wrong — naming the wrong entity, inventing a cause, dividing by a zero
+prior period, or dramatising a flat period.
+
+```bash
+npm test    # node:test, no framework
+```
 
 ## Assumptions
 

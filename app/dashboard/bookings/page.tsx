@@ -1,9 +1,10 @@
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
+import { AutumnTake } from "@/components/dashboard/AutumnTake";
 import { AttributionExplainer } from "@/components/bookings/AttributionExplainer";
 import { BookingSummary } from "@/components/bookings/BookingSummary";
-import { CampaignContribution } from "@/components/bookings/CampaignContribution";
 import { CampaignTable } from "@/components/bookings/CampaignTable";
 import { FeederMarkets } from "@/components/bookings/FeederMarkets";
+import { LeadingStrategy } from "@/components/bookings/LeadingStrategy";
 import { MarketingJourney } from "@/components/bookings/MarketingJourney";
 import { SetupNotice } from "@/components/ui/SetupNotice";
 import { rangeQuery } from "@/lib/analytics/range";
@@ -34,7 +35,9 @@ export default async function BookingsPage({
     throw error;
   }
 
-  const { property, range, dataThrough, metrics, campaigns, markets } = data;
+  const { property, range, dataThrough, metrics, campaigns, markets, narrative } =
+    data;
+  const propertyName = property.short_name ?? property.name;
 
   return (
     <div className="min-h-screen">
@@ -49,16 +52,27 @@ export default async function BookingsPage({
         }}
       />
 
-      <main className="mx-auto w-full max-w-[1200px] px-6 py-9 sm:px-10 sm:py-11">
-        <BookingSummary metrics={metrics} />
-
-        <div className="mt-14 sm:mt-16">
-          <CampaignContribution campaigns={campaigns} />
+      {/*
+        The page alternates loud and quiet on purpose: outcome, then a read of
+        it, then the strategy that produced it, then the market it came from,
+        then the mechanics, then everything technical folded away.
+      */}
+      <main className="mx-auto w-full max-w-[1200px] px-6 py-10 sm:px-10 sm:py-12">
+        <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:items-start lg:gap-16">
+          <BookingSummary metrics={metrics} propertyName={propertyName} />
+          <AutumnTake narrative={narrative} />
         </div>
 
-        <div className="mt-14 grid gap-14 border-t border-rule/70 pt-14 sm:mt-16 sm:pt-16 lg:grid-cols-2 lg:gap-16">
+        <div className="mt-16 border-t border-rule/70 pt-14 sm:mt-20 sm:pt-16">
+          <LeadingStrategy campaigns={campaigns} propertyName={propertyName} />
+        </div>
+
+        <div className="mt-16 border-t border-rule/70 pt-14 sm:mt-20 sm:pt-16">
           <FeederMarkets markets={markets} />
-          <MarketingJourney metrics={metrics.current} />
+        </div>
+
+        <div className="mt-16 grid gap-12 border-t border-rule/70 pt-14 sm:mt-20 sm:pt-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16">
+          <MarketingJourney metrics={metrics.current} propertyName={propertyName} />
         </div>
 
         <div className="mt-14 sm:mt-16">

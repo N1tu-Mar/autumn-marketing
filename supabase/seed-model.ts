@@ -18,6 +18,8 @@ export const PROPERTY = {
   country: "United States",
   timezone: "America/Detroit",
   room_count: 42,
+  image_url: null,
+  short_name: "Harborlight",
 } as const;
 
 /** Inclusive date window for generated data (797 days). */

@@ -2,7 +2,13 @@ import { count, currency, signedPercent } from "@/lib/analytics/format";
 import type { ComparedMetrics } from "@/types/analytics";
 
 /** Restates the outcome once, compactly, so the reader stays oriented. */
-export function BookingSummary({ metrics }: { metrics: ComparedMetrics }) {
+export function BookingSummary({
+  metrics,
+  propertyName,
+}: {
+  metrics: ComparedMetrics;
+  propertyName: string;
+}) {
   const { current } = metrics;
 
   return (
@@ -12,7 +18,7 @@ export function BookingSummary({ metrics }: { metrics: ComparedMetrics }) {
       </p>
       <p className="mt-3 text-[15px] text-ink-soft">
         <span className="tnum font-medium text-ink">{count(current.bookings)}</span>{" "}
-        direct bookings
+        stays booked directly with {propertyName}
         {metrics.revenue.ratio !== null ? (
           <>
             <span aria-hidden="true" className="mx-2.5 text-rule-strong">

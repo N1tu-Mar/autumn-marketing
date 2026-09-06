@@ -1,5 +1,6 @@
 import "server-only";
 import { compareMetrics, toCampaignBreakdown, toMarketBreakdown } from "@/lib/analytics/metrics";
+import { generateAutumnTake } from "@/lib/analytics/narrative";
 import { resolveRange } from "@/lib/analytics/range";
 import { getDataThrough, getProperty } from "./property";
 import { fetchCampaigns, fetchMarkets, fetchOverview } from "./queries";
@@ -25,12 +26,22 @@ export async function getBookingsData(params: RangeParams): Promise<BookingsData
       fetchMarkets(property, range.comparison),
     ]);
 
+  const metrics = compareMetrics(currentTotals, priorTotals);
+  const campaigns = toCampaignBreakdown(campaignRows);
+  const markets = toMarketBreakdown(marketRows, priorMarketRows);
+
   return {
     property,
     range,
     dataThrough,
-    metrics: compareMetrics(currentTotals, priorTotals),
-    campaigns: toCampaignBreakdown(campaignRows),
-    markets: toMarketBreakdown(marketRows, priorMarketRows),
+    metrics,
+    campaigns,
+    markets,
+    narrative: generateAutumnTake({
+      propertyName: property.short_name ?? property.name,
+      metrics,
+      campaigns,
+      markets,
+    }),
   };
 }

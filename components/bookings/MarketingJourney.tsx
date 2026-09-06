@@ -10,7 +10,13 @@ import type { PeriodMetrics } from "@/types/analytics";
  * This page is where ad clicks and click-through rate belong: someone got
  * here by asking how the bookings happened.
  */
-export function MarketingJourney({ metrics }: { metrics: PeriodMetrics }) {
+export function MarketingJourney({
+  metrics,
+  propertyName,
+}: {
+  metrics: PeriodMetrics;
+  propertyName: string;
+}) {
   const steps = [
     { label: "Ad appearances", value: count(metrics.impressions) },
     { label: "Ad clicks", value: count(metrics.clicks) },
@@ -37,7 +43,7 @@ export function MarketingJourney({ metrics }: { metrics: PeriodMetrics }) {
   ];
 
   return (
-    <Band title="How the marketing turned into bookings">
+    <Band title={`How guests moved from seeing ${propertyName} to booking`}>
       <ol>
         {steps.map((step, index) => (
           <li key={step.label}>
