@@ -4,12 +4,14 @@ A redesign of Autumn's marketing dashboard for the person who actually reads it:
 the owner of an independent hotel, between a check-in and a vendor call, who
 wants to know whether Autumn is producing direct bookings.
 
+**Live:** https://autumn-marketing.vercel.app/dashboard
+
 Two connected screens, both backed by a hosted Postgres database:
 
 | Route | What it answers |
 |---|---|
-| `/dashboard` | Is Autumn getting me more direct bookings and revenue? |
-| `/dashboard/bookings` | What's driving those bookings? |
+| [`/dashboard`](https://autumn-marketing.vercel.app/dashboard) | Is Autumn getting me more direct bookings and revenue? |
+| [`/dashboard/bookings`](https://autumn-marketing.vercel.app/dashboard/bookings) | What's driving those bookings? |
 
 ---
 
