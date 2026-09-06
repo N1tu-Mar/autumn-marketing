@@ -1,0 +1,109 @@
+@import "tailwindcss";
+
+/*
+  Harborlight — a calm operator's briefing, not an ad console.
+
+  Palette is taken from lake light rather than from hospitality clichés:
+  warm paper, a slate-leaning charcoal, and one muted harbor teal that carries
+  every accent. A single clay tone is held in reserve for genuine concern, so
+  when it appears it means something.
+*/
+
+@theme {
+  --color-canvas: #faf8f4;
+  --color-surface: #ffffff;
+  --color-surface-sunk: #f5f2ec;
+  --color-ink: #22282b;
+  --color-ink-soft: #5f6a6e;
+  --color-ink-faint: #8b9498;
+  --color-rule: #e7e2d8;
+  --color-rule-strong: #d6cfc2;
+  --color-harbor: #1c6660;
+  --color-harbor-deep: #144a46;
+  --color-harbor-wash: #e9f1ef;
+  --color-sand: #b07d3c;
+  --color-sand-wash: #f6efe3;
+  --color-clay: #a24e33;
+  --color-clay-wash: #f8ece7;
+
+  --font-sans: var(--font-instrument-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-instrument-serif), ui-serif, Georgia, serif;
+
+  --radius-card: 14px;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv05" 1;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Figures line up in columns, which is the whole point of a ledger. */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-harbor);
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
+}
+
+@layer components {
+  .card {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-rule);
+    border-radius: var(--radius-card);
+  }
+
+  /* Section eyebrow: quiet, wide, and always says what the section is for. */
+  .eyebrow {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+  }
+
+  .spoken {
+    font-family: var(--font-display);
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    line-height: 1.15;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Entrance is one quiet settle, once, so numbers are readable immediately. */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.rise {
+  animation: rise 420ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
