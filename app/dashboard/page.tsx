@@ -3,8 +3,8 @@ import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { InsightsSection } from "@/components/dashboard/InsightsSection";
 import { PerformanceHero } from "@/components/dashboard/PerformanceHero";
 import { PerformanceTrend } from "@/components/dashboard/PerformanceTrend";
-import { Section } from "@/components/ui/Section";
 import { SetupNotice } from "@/components/ui/SetupNotice";
+import { insightsHeading } from "@/lib/analytics/insights";
 import { rangeQuery } from "@/lib/analytics/range";
 import { getDashboardData } from "@/lib/data/overview";
 import { NoDataError } from "@/lib/data/property";
@@ -36,7 +36,6 @@ export default async function DashboardPage({
   }
 
   const { property, range, dataThrough, metrics, trend, insights, actions } = data;
-  const detailHref = `/dashboard/bookings${rangeQuery(range)}`;
 
   return (
     <div className="min-h-screen">
@@ -47,31 +46,33 @@ export default async function DashboardPage({
         title="Marketing performance"
       />
 
-      <main className="mx-auto w-full max-w-[1180px] space-y-6 px-5 py-7 sm:px-8 sm:py-8">
-        <PerformanceHero metrics={metrics} range={range} detailHref={detailHref} />
+      <main className="mx-auto w-full max-w-[1200px] px-6 py-9 sm:px-10 sm:py-11">
+        <PerformanceHero
+          metrics={metrics}
+          range={range}
+          timezone={property.timezone}
+          detailHref={`/dashboard/bookings${rangeQuery(range)}`}
+        />
 
-        <Section
-          eyebrow={`${range.label}, against the ${range.comparison.label}`}
-          title="Direct booking performance"
-        >
+        <div className="mt-16 sm:mt-20">
           <PerformanceTrend
+            title="Direct booking performance"
             current={trend.current}
             comparison={trend.comparison}
             grain={range.grain}
-            comparisonLabel="Same period last year"
           />
-        </Section>
+        </div>
 
-        <div className="grid gap-6 lg:grid-cols-2">
-          <InsightsSection insights={insights} />
+        <div className="mt-16 grid gap-14 border-t border-rule/70 pt-14 sm:mt-20 sm:pt-16 lg:grid-cols-2 lg:gap-16">
+          <InsightsSection heading={insightsHeading(metrics)} insights={insights} />
           <AutumnActions actions={actions} timezone={property.timezone} />
         </div>
       </main>
 
-      <footer className="border-t border-rule">
-        <div className="mx-auto w-full max-w-[1180px] px-5 py-6 text-xs text-ink-faint sm:px-8">
-          Figures cover direct bookings Autumn can connect to its marketing,
-          counted on the date each booking was made, in {property.timezone.replace("_", " ")}.
+      <footer className="mt-6 border-t border-rule/70">
+        <div className="mx-auto w-full max-w-[1200px] px-6 py-7 text-xs leading-relaxed text-ink-faint sm:px-10">
+          Direct bookings Autumn can connect to its marketing, counted on the day
+          each booking was made.
         </div>
       </footer>
     </div>

@@ -5,27 +5,33 @@ import type {
   Insight,
   MarketBreakdown,
 } from "@/types/analytics";
-import { currency, count, percent, signedPercent } from "./format";
+import { compactCurrency, currency, percent, signedPercent } from "./format";
 
 /**
  * Rule-based insights.
  *
- * The sentence templates and thresholds live in code; every number, market
- * name and campaign name inside them comes from a query. There is no
- * generative model here, and the UI does not claim there is one.
+ * These exist to explain the headline, never to restate it. "Revenue is up
+ * 26%" is already the largest thing on the screen, so it is not an insight —
+ * *which market* and *which strategy* produced that change is. Sentence
+ * templates and thresholds live in code; every number, market and campaign
+ * name inside them comes from a query.
  */
 
 const THRESHOLDS = {
-  revenueMove: 0.1,
-  bookingsMove: 0.1,
   visitsSurge: 0.15,
   conversionDrop: -0.1,
   marketGrowth: 0.2,
-  campaignShare: 0.4,
-  steady: 0.03,
+  marketDecline: -0.25,
+  campaignShare: 0.35,
+  stayLength: 0.06,
+  bookingValue: 0.08,
+  steady: 0.05,
 };
 
 const MIN_BOOKINGS_FOR_MARKET_INSIGHT = 5;
+
+/** At most two. A third only earns its place if the first two are thin. */
+const MAX_INSIGHTS = 2;
 
 export function generateInsights(input: {
   metrics: ComparedMetrics;
@@ -35,11 +41,12 @@ export function generateInsights(input: {
 }): Insight[] {
   const { metrics, campaigns, markets } = input;
   const { current, previous } = metrics;
-  const candidates: Insight[] = [];
 
   if (current.bookings === 0 && current.impressions === 0) return [];
 
-  /* -- concerns first: the owner should never have to dig for bad news ----- */
+  const candidates: Insight[] = [];
+
+  /* -- a genuine problem outranks anything else --------------------------- */
 
   const visitsUp = metrics.websiteVisits.ratio;
   const rateChange = metrics.bookingRate.ratio;
@@ -54,73 +61,53 @@ export function generateInsights(input: {
       tone: "concern",
       title: "More travelers are visiting, but fewer are booking",
       detail:
-        `Website visits from Autumn ads are ${signedPercent(visitsUp)} against the same period last year, ` +
-        `while the share of visitors who book fell from ${percent(previous.bookingRate)} to ${percent(current.bookingRate)}.`,
+        `Website visits rose ${signedPercent(visitsUp)}, while the share of visitors who booked ` +
+        `slipped from ${percent(previous.bookingRate)} to ${percent(current.bookingRate)}.`,
     });
   }
 
-  const revenueChange = metrics.revenue.ratio;
-  if (revenueChange !== null && revenueChange <= -THRESHOLDS.revenueMove) {
+  /* -- what actually moved the result ------------------------------------ */
+
+  // The market that contributed the most new revenue, not just the biggest one.
+  const risingMarket = [...markets]
+    .filter(
+      (m) =>
+        m.bookings >= MIN_BOOKINGS_FOR_MARKET_INSIGHT &&
+        m.revenueDelta !== null &&
+        m.revenueDelta.ratio !== null &&
+        m.revenueDelta.ratio >= THRESHOLDS.marketGrowth,
+    )
+    .sort((a, b) => (b.revenueDelta?.absolute ?? 0) - (a.revenueDelta?.absolute ?? 0))[0];
+
+  if (risingMarket) {
     candidates.push({
-      id: "revenue-down",
+      id: `market-growth-${risingMarket.guest_city}`,
+      tone: "positive",
+      title: `${risingMarket.guest_city} led the growth`,
+      detail:
+        `Travelers from ${risingMarket.guest_city} booked ${compactCurrency(risingMarket.booking_revenue)} of direct revenue, ` +
+        `${signedPercent(risingMarket.revenueDelta?.ratio ?? null)} against the same period last year.`,
+    });
+  }
+
+  const fallingMarket = [...markets]
+    .filter(
+      (m) =>
+        m.revenueDelta !== null &&
+        m.revenueDelta.ratio !== null &&
+        m.revenueDelta.ratio <= THRESHOLDS.marketDecline &&
+        m.revenueDelta.previous > 0,
+    )
+    .sort((a, b) => (a.revenueDelta?.absolute ?? 0) - (b.revenueDelta?.absolute ?? 0))[0];
+
+  if (fallingMarket && !risingMarket) {
+    candidates.push({
+      id: `market-decline-${fallingMarket.guest_city}`,
       tone: "concern",
-      title: "Direct booking revenue is down from last year",
+      title: `${fallingMarket.guest_city} sent fewer guests`,
       detail:
-        `${currency(current.bookingRevenue)} this period against ${currency(previous.bookingRevenue)} in the same period last year, ` +
-        `a difference of ${currency(Math.abs(metrics.revenue.absolute))}.`,
-    });
-  }
-
-  /* -- then the movements worth knowing about ----------------------------- */
-
-  if (revenueChange !== null && revenueChange >= THRESHOLDS.revenueMove) {
-    candidates.push({
-      id: "revenue-up",
-      tone: "positive",
-      title: `Direct booking revenue is up ${signedPercent(revenueChange)}`,
-      detail:
-        `${currency(current.bookingRevenue)} in direct booking revenue, ` +
-        `${currency(Math.abs(metrics.revenue.absolute))} more than the same period last year.`,
-    });
-  }
-
-  const bookingsChange = metrics.bookings.ratio;
-  if (bookingsChange !== null && bookingsChange >= THRESHOLDS.bookingsMove) {
-    const extra = Math.round(metrics.bookings.absolute);
-    candidates.push({
-      id: "bookings-up",
-      tone: "positive",
-      title: `${count(extra)} more direct bookings than last year`,
-      detail:
-        `${count(current.bookings)} direct bookings this period against ` +
-        `${count(previous.bookings)} in the same period last year.`,
-    });
-  }
-
-  const topMarket = markets[0];
-  const growingMarket = markets.find(
-    (m) =>
-      m.bookings >= MIN_BOOKINGS_FOR_MARKET_INSIGHT &&
-      m.revenueDelta?.ratio !== null &&
-      m.revenueDelta !== null &&
-      m.revenueDelta.ratio! >= THRESHOLDS.marketGrowth,
-  );
-  if (growingMarket) {
-    candidates.push({
-      id: `market-growth-${growingMarket.guest_city}`,
-      tone: "positive",
-      title: `${growingMarket.guest_city} is your fastest-growing booking market`,
-      detail:
-        `${currency(growingMarket.booking_revenue)} from ${count(growingMarket.bookings)} bookings, ` +
-        `${signedPercent(growingMarket.revenueDelta!.ratio)} against the same period last year.`,
-    });
-  } else if (topMarket && topMarket.revenueShare >= 0.2) {
-    candidates.push({
-      id: `market-top-${topMarket.guest_city}`,
-      tone: "neutral",
-      title: `${topMarket.guest_city} sends you the most booking revenue`,
-      detail:
-        `${currency(topMarket.booking_revenue)} — ${percent(topMarket.revenueShare)} of all direct booking revenue this period.`,
+        `Revenue from ${fallingMarket.guest_city} fell ${signedPercent(fallingMarket.revenueDelta?.ratio ?? null)} ` +
+        `to ${compactCurrency(fallingMarket.booking_revenue)}.`,
     });
   }
 
@@ -129,51 +116,134 @@ export function generateInsights(input: {
     candidates.push({
       id: `campaign-${topCampaign.campaign_id}`,
       tone: "neutral",
-      title: `${topCampaign.campaign_name} is driving the most booking revenue`,
+      title: `${topCampaign.campaign_name} was your strongest strategy`,
       detail:
-        `${currency(topCampaign.booking_revenue)} from ${count(topCampaign.bookings)} bookings — ` +
-        `${percent(topCampaign.revenueShare)} of the total.`,
+        `It produced ${percent(topCampaign.revenueShare)} of direct booking revenue, ` +
+        `${compactCurrency(topCampaign.booking_revenue)} in total.`,
     });
   }
 
-  /* -- and a calm answer when nothing has really moved -------------------- */
+  // When revenue outruns booking count, the reason is the booking itself.
+  const valueChange = metrics.averageBookingValue.ratio;
+  const stayChange = metrics.averageStayNights.ratio;
+  if (stayChange !== null && stayChange >= THRESHOLDS.stayLength) {
+    candidates.push({
+      id: "longer-stays",
+      tone: "positive",
+      title: "Guests are booking longer stays",
+      detail:
+        `The average stay grew from ${previous.averageStayNights?.toFixed(1)} to ` +
+        `${current.averageStayNights?.toFixed(1)} nights, lifting the value of each booking.`,
+    });
+  } else if (valueChange !== null && valueChange >= THRESHOLDS.bookingValue) {
+    candidates.push({
+      id: "higher-booking-value",
+      tone: "positive",
+      title: "Each booking is worth more",
+      detail:
+        `The average booking rose to ${currency(current.averageBookingValue)}, ` +
+        `${signedPercent(valueChange)} against the same period last year.`,
+    });
+  }
+
+  /* -- a calm answer when nothing really moved --------------------------- */
 
   if (candidates.length === 0) {
+    const revenueChange = metrics.revenue.ratio;
     candidates.push({
       id: "steady",
       tone: "neutral",
-      title: "Performance is steady",
+      title: "Nothing moved much this period",
       detail:
         revenueChange === null
-          ? `${currency(current.bookingRevenue)} in direct booking revenue this period. There is no comparable period last year yet.`
-          : `Direct booking revenue is within ${percent(Math.abs(revenueChange), true)} of the same period last year.`,
+          ? `${currency(current.bookingRevenue)} in direct booking revenue. There is no comparable period last year yet.`
+          : `Direct booking revenue is within ${percent(Math.abs(revenueChange), true)} of the same period last year, and no market or strategy shifted materially.`,
     });
   }
 
-  return candidates.slice(0, 3);
+  return candidates.slice(0, MAX_INSIGHTS);
 }
 
-/**
- * The hero sentence. Same idea as the insights: a template chosen by data.
- */
-export function headlineStatus(metrics: ComparedMetrics): string {
+/** The section heading follows the result rather than announcing a category. */
+export function insightsHeading(metrics: ComparedMetrics): string {
   const revenue = metrics.revenue.ratio;
-  const visits = metrics.websiteVisits.ratio;
-  const rate = metrics.bookingRate.ratio;
+  if (revenue === null) return "What stood out";
+  if (revenue >= THRESHOLDS.steady) return "What's behind the growth";
+  if (revenue <= -THRESHOLDS.steady) return "What's behind the change";
+  return "What stood out";
+}
 
-  if (metrics.current.bookings === 0) return "No direct bookings in this period";
-  if (revenue === null) return "Your direct booking results so far";
+/* --------------------------------------------------------- hero status ---- */
 
-  if (
-    visits !== null &&
-    rate !== null &&
-    visits >= THRESHOLDS.visitsSurge &&
-    rate <= THRESHOLDS.conversionDrop
-  ) {
-    return "Traffic is growing, but fewer visitors are booking";
-  }
-  if (revenue >= 0.25) return "You're having a strong season";
-  if (revenue >= THRESHOLDS.revenueMove) return "Your direct bookings are growing";
-  if (revenue <= -THRESHOLDS.revenueMove) return "Direct booking revenue is behind last year";
-  return "Direct booking performance is steady";
+/**
+ * The spoken line at the top. It has to agree with the range the owner picked:
+ * "a strong season" is wrong when the filter says Last 30 days.
+ */
+
+type Tier = "strong" | "growing" | "steady" | "softening";
+
+const STATUS: Record<Tier, Record<string, string>> = {
+  strong: {
+    last_30: "You've had a strong month.",
+    last_90: "Your recent booking performance is strong.",
+    ytd: "You're having a strong year.",
+    last_12m: "Direct bookings are well ahead of last year.",
+    custom: "You've had a strong stretch.",
+  },
+  growing: {
+    last_30: "Your direct bookings grew this month.",
+    last_90: "Your direct bookings are growing.",
+    ytd: "Your direct bookings are growing this year.",
+    last_12m: "Direct bookings are trending ahead of last year.",
+    custom: "Your direct bookings are growing.",
+  },
+  steady: {
+    last_30: "Booking performance held steady this month.",
+    last_90: "Recent booking performance is steady.",
+    ytd: "Booking performance is steady this year.",
+    last_12m: "Direct bookings are level with last year.",
+    custom: "Booking performance is steady.",
+  },
+  softening: {
+    last_30: "Direct bookings softened this month.",
+    last_90: "Direct bookings have softened recently.",
+    ytd: "Direct bookings are behind last year.",
+    last_12m: "Direct bookings are behind the prior year.",
+    custom: "Direct bookings softened in this period.",
+  },
+};
+
+export function headlineStatus(
+  metrics: ComparedMetrics,
+  range: DateRange,
+): string {
+  if (metrics.current.bookings === 0) return "No direct bookings in this period.";
+
+  const revenue = metrics.revenue.ratio;
+  if (revenue === null) return "Here's how your direct bookings are doing.";
+
+  const tier: Tier =
+    revenue >= 0.2
+      ? "strong"
+      : revenue >= 0.08
+        ? "growing"
+        : revenue <= -0.08
+          ? "softening"
+          : "steady";
+
+  return STATUS[tier][range.key] ?? STATUS[tier].custom;
+}
+
+/** Time of day at the property, not on the server. */
+export function greeting(timezone: string): string {
+  const hour = Number(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      hour: "numeric",
+      hour12: false,
+    }).format(new Date()),
+  );
+  if (hour < 12) return "Good morning";
+  if (hour < 18) return "Good afternoon";
+  return "Good evening";
 }

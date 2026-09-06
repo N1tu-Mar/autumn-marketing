@@ -49,17 +49,25 @@ export default async function BookingsPage({
         }}
       />
 
-      <main className="mx-auto w-full max-w-[1180px] space-y-6 px-5 py-7 sm:px-8 sm:py-8">
+      <main className="mx-auto w-full max-w-[1200px] px-6 py-9 sm:px-10 sm:py-11">
         <BookingSummary metrics={metrics} />
-        <CampaignContribution campaigns={campaigns} />
 
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="mt-14 sm:mt-16">
+          <CampaignContribution campaigns={campaigns} />
+        </div>
+
+        <div className="mt-14 grid gap-14 border-t border-rule/70 pt-14 sm:mt-16 sm:pt-16 lg:grid-cols-2 lg:gap-16">
           <FeederMarkets markets={markets} />
           <MarketingJourney metrics={metrics.current} />
         </div>
 
-        <CampaignTable campaigns={campaigns} />
-        <AttributionExplainer range={range} timezone={property.timezone} />
+        <div className="mt-14 sm:mt-16">
+          <CampaignTable campaigns={campaigns} />
+        </div>
+
+        <div className="mt-14 border-t border-rule/70 pt-8 sm:mt-16">
+          <AttributionExplainer range={range} />
+        </div>
       </main>
     </div>
   );

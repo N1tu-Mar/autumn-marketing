@@ -38,6 +38,8 @@ export type PeriodMetrics = {
   averageBookingValue: number | null;
   /** revenue / spend — null when nothing was spent. */
   returnOnAdSpend: number | null;
+  /** room nights / bookings — how long guests are staying. */
+  averageStayNights: number | null;
 };
 
 /** A change between the current period and the same period last year. */
@@ -59,6 +61,7 @@ export type ComparedMetrics = {
   impressions: Delta;
   averageBookingValue: Delta;
   bookingRate: Delta;
+  averageStayNights: Delta;
 };
 
 export type Insight = {

@@ -25,22 +25,16 @@ import type { TrendRow } from "@/types/database";
 
 type Metric = "revenue" | "bookings";
 
-const GRAIN_NOTE: Record<DateRange["grain"], string> = {
-  day: "Daily",
-  week: "Weekly",
-  month: "Monthly",
-};
-
 export function PerformanceTrend({
+  title,
   current,
   comparison,
   grain,
-  comparisonLabel,
 }: {
+  title: string;
   current: TrendRow[];
   comparison: TrendRow[];
   grain: DateRange["grain"];
-  comparisonLabel: string;
 }) {
   const [metric, setMetric] = useState<Metric>("revenue");
 
@@ -75,19 +69,23 @@ export function PerformanceTrend({
 
   if (data.length === 0) {
     return (
-      <p className="py-10 text-center text-sm text-ink-soft">
-        No bookings were recorded in this period, so there is nothing to plot yet.
-      </p>
+      <section>
+        <h2 className="text-[22px] font-semibold tracking-[-0.015em] text-ink sm:text-[24px]">
+          {title}
+        </h2>
+        <p className="py-10 text-sm text-ink-soft">
+          No bookings were recorded in this period, so there is nothing to plot yet.
+        </p>
+      </section>
     );
   }
 
   return (
-    <div>
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-[13px] text-ink-soft">
-          {GRAIN_NOTE[grain]} direct booking{" "}
-          {metric === "revenue" ? "revenue" : "count"}
-        </p>
+    <section>
+      <div className="mb-7 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-[22px] font-semibold tracking-[-0.015em] text-ink sm:text-[24px]">
+          {title}
+        </h2>
         <div
           role="group"
           aria-label="Chart metric"
@@ -111,7 +109,7 @@ export function PerformanceTrend({
         </div>
       </div>
 
-      <div className="h-[280px] w-full sm:h-[320px]">
+      <div className="h-[300px] w-full sm:h-[400px]">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 6, right: 8, bottom: 0, left: -6 }}>
             <CartesianGrid stroke="#e7e2d8" vertical={false} />
@@ -187,9 +185,9 @@ export function PerformanceTrend({
             aria-hidden="true"
             className="h-0 w-6 border-t-2 border-dashed border-sand"
           />
-          {comparisonLabel}
+          Same period last year
         </li>
       </ul>
-    </div>
+    </section>
   );
 }

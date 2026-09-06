@@ -47,7 +47,7 @@ export async function getDashboardData(
     fetchCampaigns(property, range),
     fetchMarkets(property, range),
     fetchMarkets(property, range.comparison),
-    fetchActions(property, range, 3),
+    fetchActions(property, range, 2),
   ]);
 
   const metrics = compareMetrics(currentTotals, priorTotals);

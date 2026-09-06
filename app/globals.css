@@ -10,14 +10,14 @@
 */
 
 @theme {
-  --color-canvas: #faf8f4;
+  --color-canvas: #f9f6f0;
   --color-surface: #ffffff;
-  --color-surface-sunk: #f5f2ec;
-  --color-ink: #22282b;
-  --color-ink-soft: #5f6a6e;
-  --color-ink-faint: #8b9498;
-  --color-rule: #e7e2d8;
-  --color-rule-strong: #d6cfc2;
+  --color-surface-sunk: #f2eee6;
+  --color-ink: #23282a;
+  --color-ink-soft: #5e696d;
+  --color-ink-faint: #8a9398;
+  --color-rule: #e8e2d7;
+  --color-rule-strong: #d5cec0;
   --color-harbor: #1c6660;
   --color-harbor-deep: #144a46;
   --color-harbor-wash: #e9f1ef;
@@ -29,7 +29,7 @@
   --font-sans: var(--font-instrument-sans), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-instrument-serif), ui-serif, Georgia, serif;
 
-  --radius-card: 14px;
+  --radius-card: 18px;
 }
 
 @layer base {
@@ -59,10 +59,18 @@
 }
 
 @layer components {
+  /*
+    The hero is the only raised surface in the product: one sheet of paper on
+    a warm desk. Everything else sits directly on the ground, grouped by
+    typography and space rather than by another rectangle.
+  */
   .card {
     background-color: var(--color-surface);
-    border: 1px solid var(--color-rule);
+    border: 1px solid color-mix(in srgb, var(--color-rule) 70%, transparent);
     border-radius: var(--radius-card);
+    box-shadow:
+      0 1px 2px rgba(60, 48, 30, 0.03),
+      0 12px 28px -18px rgba(60, 48, 30, 0.16);
   }
 
   /* Section eyebrow: quiet, wide, and always says what the section is for. */
@@ -74,11 +82,20 @@
     color: var(--color-ink-faint);
   }
 
+  /*
+    One serif sentence per screen, spoken by the operator. Every figure stays
+    in the tabular sans, so the voice and the ledger never blur together.
+  */
   .spoken {
     font-family: var(--font-display);
     font-weight: 400;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.005em;
     line-height: 1.15;
+  }
+
+  /* Disclosure triangles are noise; the summary text carries the affordance. */
+  summary::-webkit-details-marker {
+    display: none;
   }
 }
 

@@ -10,6 +10,22 @@ export function currency(value: number | null, options?: { cents?: boolean }): s
   }).format(value);
 }
 
+/** 96,668 -> "96.7K". Used where the exact figure is not the point. */
+export function compactCount(value: number | null): string {
+  if (value === null || !Number.isFinite(value)) return "—";
+  if (Math.abs(value) < 1000) return count(value);
+  const thousands = value / 1000;
+  return `${thousands >= 100 ? Math.round(thousands) : thousands.toFixed(1)}K`;
+}
+
+/** $45,190 -> "$45.2K". */
+export function compactCurrency(value: number | null): string {
+  if (value === null || !Number.isFinite(value)) return "—";
+  if (Math.abs(value) < 1000) return currency(value);
+  const thousands = value / 1000;
+  return `$${thousands >= 100 ? Math.round(thousands) : thousands.toFixed(1)}K`;
+}
+
 export function count(value: number | null): string {
   if (value === null || !Number.isFinite(value)) return "—";
   return new Intl.NumberFormat("en-US").format(Math.round(value));
@@ -34,6 +50,11 @@ export function signedPercent(value: number | null): string {
 export function signedCount(value: number): string {
   const rounded = Math.round(value);
   return `${rounded >= 0 ? "+" : "−"}${count(Math.abs(rounded))}`;
+}
+
+/** "1 booking", "12 bookings". */
+export function plural(value: number, singular: string, pluralForm?: string): string {
+  return `${count(value)} ${Math.round(value) === 1 ? singular : (pluralForm ?? `${singular}s`)}`;
 }
 
 export function shortDate(iso: string, timeZone = "UTC"): string {

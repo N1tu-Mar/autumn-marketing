@@ -48,6 +48,7 @@ export function toPeriodMetrics(row: OverviewMetricsRow | undefined): PeriodMetr
     bookingRate: ratio(bookings, websiteVisits),
     averageBookingValue: ratio(bookingRevenue, bookings),
     returnOnAdSpend: ratio(bookingRevenue, adSpend),
+    averageStayNights: ratio(num(row?.room_nights), bookings),
   };
 }
 
@@ -86,6 +87,7 @@ export function compareMetrics(
       previous.averageBookingValue,
     ),
     bookingRate: delta(current.bookingRate, previous.bookingRate),
+    averageStayNights: delta(current.averageStayNights, previous.averageStayNights),
   };
 }
 

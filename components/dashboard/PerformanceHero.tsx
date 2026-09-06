@@ -1,95 +1,95 @@
 import Link from "next/link";
-import { headlineStatus } from "@/lib/analytics/insights";
-import { count, currency } from "@/lib/analytics/format";
-import { ChangePill } from "@/components/ui/ChangePill";
+import { greeting, headlineStatus } from "@/lib/analytics/insights";
+import { count, currency, signedPercent } from "@/lib/analytics/format";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { GuestJourney } from "./GuestJourney";
 import type { ComparedMetrics, DateRange } from "@/types/analytics";
 
 /**
- * The 30-second answer.
+ * The briefing.
  *
- * Revenue is the only number set at display size; bookings, the comparison and
- * average booking value sit beneath it as supporting context rather than as
- * three more cards competing for the same attention.
+ * One dominant number, one supporting count, one comparison. Average booking
+ * value is a footnote, not a fourth statistic — three growth badges side by
+ * side make the reader compare them instead of reading the result.
  */
 export function PerformanceHero({
   metrics,
   range,
+  timezone,
   detailHref,
 }: {
   metrics: ComparedMetrics;
   range: DateRange;
+  timezone: string;
   detailHref: string;
 }) {
   const { current } = metrics;
-  const noBookings = current.bookings === 0;
+
+  if (current.bookings === 0) {
+    return (
+      <section className="card rise px-6 py-10 sm:px-12 sm:py-12">
+        <h2 className="spoken text-[30px] text-ink sm:text-[34px]">
+          {headlineStatus(metrics, range)}
+        </h2>
+        <div className="mt-7">
+          <EmptyState
+            title="No direct bookings were attributed to Autumn in this period."
+            detail="Try a longer reporting period, or check back once campaigns have run for a full booking cycle."
+          />
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="card rise overflow-hidden">
-      <div className="px-5 pb-6 pt-6 sm:px-8 sm:pb-7 sm:pt-7">
-        <p className="eyebrow">
-          {range.label} · compared with the {range.comparison.label}
-        </p>
+      <div className="px-6 pb-9 pt-9 sm:px-12 sm:pb-11 sm:pt-11">
+        <p className="text-[13px] text-ink-faint">{greeting(timezone)}</p>
 
-        <h2 className="spoken mt-3 max-w-2xl text-[30px] text-ink sm:text-[38px]">
-          {headlineStatus(metrics)}
+        <h2 className="spoken mt-2.5 max-w-2xl text-[32px] leading-[1.15] text-ink sm:text-[40px]">
+          {headlineStatus(metrics, range)}
         </h2>
 
-        {noBookings ? (
-          <div className="mt-6">
-            <EmptyState
-              title="No direct bookings were attributed to Autumn in this period."
-              detail="Try a longer reporting period, or check back once campaigns have been running for a full booking cycle."
-            />
-          </div>
-        ) : (
-          <div className="mt-6 flex flex-wrap items-end gap-x-12 gap-y-6">
-            <div>
-              <p className="tnum text-[46px] font-semibold leading-none tracking-[-0.03em] text-ink sm:text-[60px]">
-                {currency(current.bookingRevenue)}
-              </p>
-              <p className="mt-2 text-sm text-ink-soft">
-                Direct booking revenue from Autumn
-              </p>
-              <p className="mt-2.5">
-                <ChangePill delta={metrics.revenue} />
-              </p>
-            </div>
+        <p className="tnum mt-9 text-[52px] font-semibold leading-none tracking-[-0.035em] text-ink sm:text-[64px]">
+          {currency(current.bookingRevenue)}
+        </p>
+        <p className="mt-3 text-[15px] text-ink-soft">
+          in direct booking revenue through Autumn
+        </p>
 
-            <dl className="flex gap-x-10 gap-y-4">
-              <div>
-                <dt className="text-[13px] text-ink-soft">Direct bookings</dt>
-                <dd className="tnum mt-0.5 text-[22px] font-semibold text-ink">
-                  {count(current.bookings)}
-                </dd>
-                <dd className="mt-1">
-                  <ChangePill delta={metrics.bookings} suffix="vs last year" size="sm" />
-                </dd>
-              </div>
-              <div>
-                <dt className="text-[13px] text-ink-soft">Average booking</dt>
-                <dd className="tnum mt-0.5 text-[22px] font-semibold text-ink">
-                  {currency(current.averageBookingValue)}
-                </dd>
-                <dd className="mt-1">
-                  <ChangePill
-                    delta={metrics.averageBookingValue}
-                    suffix="vs last year"
-                    size="sm"
-                  />
-                </dd>
-              </div>
-            </dl>
-          </div>
-        )}
+        <p className="mt-6 text-[17px] text-ink">
+          <span className="tnum font-semibold">{count(current.bookings)}</span>{" "}
+          direct bookings
+          {metrics.revenue.ratio !== null ? (
+            <>
+              <span aria-hidden="true" className="mx-2.5 text-rule-strong">
+                ·
+              </span>
+              <span
+                className={
+                  metrics.revenue.direction === "down" ? "text-clay" : "text-harbor"
+                }
+              >
+                <span aria-hidden="true">
+                  {metrics.revenue.direction === "down" ? "↓ " : "↑ "}
+                </span>
+                <span className="tnum">{signedPercent(metrics.revenue.ratio)}</span>{" "}
+                from the same period last year
+              </span>
+            </>
+          ) : null}
+        </p>
+
+        <p className="mt-2 text-[13px] text-ink-faint">
+          Average booking value {currency(current.averageBookingValue)}
+        </p>
       </div>
 
-      <div className="border-t border-rule bg-surface-sunk/60 px-5 py-6 sm:px-8">
+      <div className="border-t border-rule/70 px-6 py-7 sm:px-12">
         <GuestJourney metrics={current} />
       </div>
 
-      <div className="border-t border-rule px-5 py-3.5 sm:px-8">
+      <div className="border-t border-rule/70 px-6 py-4 sm:px-12">
         <Link
           href={detailHref}
           className="group inline-flex items-center gap-1.5 text-sm font-medium text-harbor transition-colors hover:text-harbor-deep"
