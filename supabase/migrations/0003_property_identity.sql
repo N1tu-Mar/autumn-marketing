@@ -7,8 +7,3 @@
 alter table public.properties
   add column if not exists image_url  text,
   add column if not exists short_name text;
-
-update public.properties
-   set short_name = 'Harborlight'
- where slug = 'harborlight-inn'
-   and short_name is null;

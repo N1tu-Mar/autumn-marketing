@@ -13,6 +13,16 @@ Two connected screens, both backed by a hosted Postgres database:
 | [`/dashboard`](https://autumn-marketing.vercel.app/dashboard) | Is Autumn getting me more direct bookings and revenue? |
 | [`/dashboard/bookings`](https://autumn-marketing.vercel.app/dashboard/bookings) | What's driving those bookings? |
 
+No login is required. The date range travels with you between the two screens.
+
+## Screenshots
+
+| | |
+|---|---|
+| [Reference dashboard](submission/screenshots/reference-dashboard.png) | The original Autumn marketing dashboard this redesign replaces |
+| [Redesigned main dashboard](submission/screenshots/redesigned-main-dashboard.png) | The briefing: revenue, bookings, what changed, what Autumn is doing |
+| [Connected booking detail](submission/screenshots/redesigned-booking-detail.png) | What is actually driving those direct bookings |
+
 ---
 
 ## The product decision
@@ -90,7 +100,7 @@ Apply the migrations to your Supabase project, then seed it:
 ```bash
 supabase link --project-ref <your-project-ref>
 supabase db push          # applies supabase/migrations/*
-npm run seed              # writes ~800 days of generated facts
+npm run seed              # writes 766 days of generated facts
 npm run seed:verify       # asserts the data is sane, exits non-zero if not
 ```
 
@@ -157,10 +167,23 @@ The generator works in one direction:
 Every stay claims inventory from a room ledger, so **no night can ever sell more
 than 19 rooms**. `npm run seed` refuses to write a dataset that oversells the
 property, and `npm run seed:verify` re-derives occupancy from the rows in
-Postgres and fails on any violation. In the current dataset: 8,347 room nights
-sold of 16,834 available (49.6% occupancy), busiest night 19 of 19, and
-Autumn-attributed revenue is 19.2% of total modeled room revenue — a subset of
-the business, never the whole of it.
+Postgres and fails on any violation.
+
+Two different scopes get reported, and it is worth keeping them apart:
+
+| Figure | Scope | Value |
+|---|---|---|
+| Room nights sold / available | The whole modeled hotel, every channel | 8,347 of 16,834 (49.6% occupancy) |
+| Busiest night | The whole modeled hotel | 19 of 19 rooms |
+| Modeled room revenue | The whole modeled hotel, every channel | $2,001,656 |
+| Direct bookings stored in `bookings` | Direct channel only | 1,489 bookings, 3,389 room nights, $870,976 |
+| Autumn-attributed subset | What the dashboard shows | 648 bookings, $384,268 |
+
+The first three are seed-time figures describing the hotel the model imagines;
+they are never written to a table and never rendered. Only the direct-channel
+rows are stored, which is why `npm run verify:data` reports room nights in the
+low thousands rather than 8,347. Autumn-attributed revenue is 19.2% of total
+modeled room revenue: a subset of the business, never the whole of it.
 
 The data has a story, including the parts that aren't flattering: a softer
 autumn 2025, a budget shift out of non-brand search into metasearch, and a
@@ -227,6 +250,35 @@ prior period, or dramatising a flat period.
 npm test    # node:test, no framework
 ```
 
+---
+
+## Data verification
+
+```bash
+npm run verify:data
+```
+
+This runs 36 assertions against the hosted database using the same publishable
+key the browser uses, so it proves what a visitor can actually reach. It checks
+that the Supabase URL is a hosted project rather than a local one, that the
+property the app asks for exists, that there are at least 720 distinct metric
+days, that impressions ≥ clicks ≥ website visits on every row, that no night
+oversells the property's 19 rooms, and that every figure on the dashboard
+reconciles with the underlying rows: headline revenue against the sum of
+booking rows, campaign and market totals against the same, and CTR, booking
+conversion, ROAS and average booking value against their own inputs. It exits
+non-zero on any failure.
+
+## Quality checks
+
+```bash
+npm run lint          # eslint
+npx tsc --noEmit      # types
+npm run build         # production build
+npm test              # narrative unit tests
+npm run verify:data   # 36 assertions against the hosted database
+```
+
 ## Assumptions
 
 - Fictional demo property with generated data. No real hotel or guest exists here.
@@ -271,3 +323,29 @@ Do not set `SUPABASE_SERVICE_ROLE_KEY` in Vercel. The application never reads it
   answering a question.
 - **No custom date range picker.** Four presets cover the question this screen
   exists to answer; `?from=&to=` is supported in the URL for anything else.
+
+## What I'd do next
+
+- **Validate the hierarchy with actual operators.** The whole thesis is that an
+  owner wants an outcome and not a metric wall. That belief is reasoned, not
+  tested, and five conversations would either confirm it or reorder the page.
+- **Tune the narrative thresholds from real reactions.** The numbers in
+  `insights.ts` decide when the product speaks up. They are currently my
+  judgment about what is worth mentioning, which is the weakest part of the
+  layer.
+- **Make attribution inspectable.** The methodology note explains last-touch in
+  prose; an owner who disagrees with a number cannot yet click into the
+  bookings behind it.
+- **Support a second property without adding a switcher to this screen.** The
+  schema is already property-scoped, so this is a routing and identity problem
+  rather than a data one.
+- **Connect a real PMS or booking engine** so the direct-booking figures come
+  from the hotel's own reservations rather than from a generator.
+
+## Documents
+
+| File | What it is |
+|---|---|
+| [`MODEL_ASSUMPTIONS.md`](MODEL_ASSUMPTIONS.md) | The research and modeling audit trail behind the dataset |
+| [`DESIGN_DECISIONS.md`](DESIGN_DECISIONS.md) | Why the product looks the way it does |
+| [`QA_REPORT.md`](QA_REPORT.md) | The final QA pass, with evidence |

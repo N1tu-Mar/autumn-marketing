@@ -8,6 +8,12 @@
  *
  * The ring pulses once every eight seconds (see .help-pulse in globals.css) so
  * the affordance is discoverable without a permanent visual weight.
+ *
+ * Below the desktop breakpoint the panel is pinned to the bottom of the
+ * viewport instead of floating above its trigger. A 15rem panel centred on a
+ * trigger sitting near the right edge of a phone hangs off the page, and an
+ * absolutely positioned box hanging off the page is a horizontal scrollbar on
+ * every screen; inside the scrolling table it was being clipped instead.
  */
 export function HelpTip({ label, text }: { label: string; text: string }) {
   return (
@@ -21,7 +27,7 @@ export function HelpTip({ label, text }: { label: string; text: string }) {
       </button>
       <span
         role="presentation"
-        className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 w-[min(15rem,70vw)] -translate-x-1/2 rounded-lg border border-rule bg-surface px-3 py-2 text-left text-xs font-normal normal-case leading-snug tracking-normal text-ink-soft opacity-0 shadow-[0_8px_24px_rgba(34,40,43,0.10)] transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
+        className="pointer-events-none fixed inset-x-4 bottom-4 z-20 w-auto rounded-lg border border-rule bg-surface px-3 py-2 text-left text-xs font-normal normal-case leading-snug tracking-normal text-ink-soft opacity-0 shadow-[0_8px_24px_rgba(34,40,43,0.10)] transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100 lg:absolute lg:bottom-full lg:left-1/2 lg:right-auto lg:mb-2 lg:w-[min(15rem,70vw)] lg:-translate-x-1/2"
       >
         {text}
       </span>

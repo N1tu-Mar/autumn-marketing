@@ -27,7 +27,7 @@ export function BookingSummary({
       <p className="mt-3 max-w-[42ch] text-[15px] text-ink-soft">
         in direct booking revenue from{" "}
         <span className="tnum font-medium text-ink">{count(current.bookings)}</span>{" "}
-        stays booked directly with {propertyName}
+        direct bookings made on {propertyName}&apos;s own website
       </p>
       {comparison === null ? (
         <p className="mt-1.5 text-[15px] text-ink-faint">

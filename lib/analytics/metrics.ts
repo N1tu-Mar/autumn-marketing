@@ -145,25 +145,3 @@ export function toMarketBreakdown(
     })
     .sort((a, b) => b.booking_revenue - a.booking_revenue);
 }
-
-/**
- * Collapses a long tail into a single "Other markets" row so the ranked list
- * stays readable. The remainder is summed, never dropped.
- */
-export function withOtherMarkets(
-  markets: MarketBreakdown[],
-  keep: number,
-): { top: MarketBreakdown[]; other: { bookings: number; revenue: number; share: number } | null } {
-  if (markets.length <= keep + 1) return { top: markets, other: null };
-
-  const top = markets.slice(0, keep);
-  const rest = markets.slice(keep);
-  return {
-    top,
-    other: {
-      bookings: rest.reduce((s, m) => s + m.bookings, 0),
-      revenue: rest.reduce((s, m) => s + m.booking_revenue, 0),
-      share: rest.reduce((s, m) => s + m.revenueShare, 0),
-    },
-  };
-}

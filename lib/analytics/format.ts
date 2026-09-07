@@ -54,11 +54,6 @@ export function signedPercent(value: number | null): string {
   return `${pct >= 0 ? "+" : "−"}${Math.abs(pct).toFixed(decimals)}%`;
 }
 
-export function signedCount(value: number): string {
-  const rounded = Math.round(value);
-  return `${rounded >= 0 ? "+" : "−"}${count(Math.abs(rounded))}`;
-}
-
 /** "1 booking", "12 bookings". */
 export function plural(value: number, singular: string, pluralForm?: string): string {
   return `${count(value)} ${Math.round(value) === 1 ? singular : (pluralForm ?? `${singular}s`)}`;

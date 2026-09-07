@@ -42,3 +42,6 @@ next-env.d.ts
 !.env.example
 supabase/.temp
 supabase/.branches
+
+# Local build brief, not part of the submission
+prompt*.md

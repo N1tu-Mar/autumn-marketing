@@ -185,7 +185,7 @@ export function generateAutumnTake(input: {
   if (strategy && strategy.revenueShare >= THRESHOLDS.strategyShare) {
     const copy = CAMPAIGN_COPY[strategy.campaign_type];
     const growthClause = growing
-      ? ` ${growing.guest_city} was your strongest guest market, with booking revenue ${changeInWords(growing.revenueDelta?.ratio)} than the same period last year.`
+      ? ` ${growing.guest_city} grew the most, with booking revenue ${changeInWords(growing.revenueDelta?.ratio)} than the same period last year.`
       : top
         ? ` ${top.guest_city} remained your largest guest market at ${percent(top.revenueShare)} of booking revenue.`
         : "";

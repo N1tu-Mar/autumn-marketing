@@ -137,7 +137,7 @@ export function FeederMarkets({
       {markets.length > others.length + 1 ? (
         <details className="mt-5">
           <summary className="cursor-pointer list-none text-sm font-medium text-harbor transition-colors hover:text-harbor-deep">
-            See all {markets.length} guest markets
+            See the other {markets.length - others.length - 1} guest markets
             <span aria-hidden="true" className="ml-1.5">
               ↓
             </span>
