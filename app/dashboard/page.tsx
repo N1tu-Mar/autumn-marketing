@@ -65,10 +65,7 @@ export default async function DashboardPage({
         </div>
 
         <div className="mt-16 grid gap-14 border-t border-rule/70 pt-14 sm:mt-20 sm:pt-16 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:gap-20">
-          <WhatMattered
-            narrative={narrative}
-            secondary={secondaryInsight(narrative, insights)}
-          />
+          <WhatMattered secondary={secondaryInsight(narrative, insights)} />
           <AutumnActions actions={actions} timezone={property.timezone} />
         </div>
       </main>

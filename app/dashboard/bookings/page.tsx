@@ -1,5 +1,4 @@
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
-import { AutumnTake } from "@/components/dashboard/AutumnTake";
 import { AttributionExplainer } from "@/components/bookings/AttributionExplainer";
 import { BookingSummary } from "@/components/bookings/BookingSummary";
 import { CampaignTable } from "@/components/bookings/CampaignTable";
@@ -35,8 +34,7 @@ export default async function BookingsPage({
     throw error;
   }
 
-  const { property, range, dataThrough, metrics, campaigns, markets, narrative } =
-    data;
+  const { property, range, dataThrough, metrics, campaigns, markets } = data;
   const propertyName = property.short_name ?? property.name;
 
   return (
@@ -53,15 +51,12 @@ export default async function BookingsPage({
       />
 
       {/*
-        The page alternates loud and quiet on purpose: outcome, then a read of
-        it, then the strategy that produced it, then the market it came from,
-        then the mechanics, then everything technical folded away.
+        The page alternates loud and quiet on purpose: outcome, then the
+        strategy that produced it, then the market it came from, then the
+        mechanics, then everything technical folded away.
       */}
       <main className="mx-auto w-full max-w-[1200px] px-6 py-10 sm:px-10 sm:py-12">
-        <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:items-start lg:gap-16">
-          <BookingSummary metrics={metrics} propertyName={propertyName} />
-          <AutumnTake narrative={narrative} />
-        </div>
+        <BookingSummary metrics={metrics} propertyName={propertyName} />
 
         <div className="mt-16 border-t border-rule/70 pt-14 sm:mt-20 sm:pt-16">
           <LeadingStrategy campaigns={campaigns} propertyName={propertyName} />
