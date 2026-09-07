@@ -29,20 +29,22 @@ export function MarketingJourney({
 
   const visitRate = ratio(metrics.websiteVisits, metrics.clicks);
 
+  // A rate with no denominator has nothing to say, so the connector carrying
+  // it is dropped rather than printed as a placeholder inside a sentence.
   const rates = [
     {
       text: "of ad appearances led to a click",
-      value: percent(metrics.clickThroughRate),
+      value: metrics.clickThroughRate,
       help: METRIC_LANGUAGE.clickThroughRate,
     },
     {
       text: "of those clicks reached your website",
-      value: percent(visitRate),
+      value: visitRate,
       help: null,
     },
     {
       text: "of those visits ended in a direct booking",
-      value: percent(metrics.bookingRate),
+      value: metrics.bookingRate,
       help: METRIC_LANGUAGE.bookingRate,
     },
   ];
@@ -72,11 +74,11 @@ export function MarketingJourney({
                 {step.value}
               </span>
             </div>
-            {index < rates.length ? (
+            {index < rates.length && rates[index].value !== null ? (
               <div className="my-2 flex items-start gap-2.5 pl-1">
                 <span aria-hidden="true" className="mt-1 h-5 w-px shrink-0 bg-rule-strong" />
                 <span className="text-[13px] leading-relaxed text-ink-faint">
-                  <span className="tnum">{rates[index].value}</span>{" "}
+                  <span className="tnum">{percent(rates[index].value)}</span>{" "}
                   {rates[index].text}
                   {rates[index].help ? (
                     <HelpTip

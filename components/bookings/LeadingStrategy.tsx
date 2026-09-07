@@ -53,9 +53,9 @@ export function LeadingStrategy({ campaigns }: { campaigns: CampaignBreakdown[] 
         </p>
         <p className="mt-2.5 text-[15px] text-ink-soft">
           in direct booking revenue from{" "}
-          <span className="tnum">{plural(leader.bookings, "booking")}</span> —{" "}
-          <span className="tnum">{percent(leader.revenueShare)}</span> of your direct
-          booking revenue
+          <span className="tnum">{plural(leader.bookings, "booking")}</span>. That is{" "}
+          <span className="tnum">{percent(leader.revenueShare)}</span> of every direct
+          booking dollar Autumn connected to marketing.
         </p>
         <p className="mt-3 max-w-prose text-[15px] leading-relaxed text-ink-soft">
           {leadCopy.description}

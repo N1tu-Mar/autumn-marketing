@@ -63,7 +63,7 @@ export function resolveRange(
 
   const days = daysBetween(from, to);
   const label = custom
-    ? `${formatDay(from)} – ${formatDay(to)}`
+    ? `${formatDay(from)} to ${formatDay(to)}`
     : (RANGE_OPTIONS.find((o) => o.key === key)?.label ?? "Year to date");
 
   return {

@@ -48,8 +48,9 @@ export function AttributionExplainer({
           <div>
             <dt className="font-medium text-ink-soft">Which marketing gets the credit</dt>
             <dd>
-              The last campaign the traveler engaged with before booking — last-touch
-              attribution. A booking is never counted twice across campaigns.
+              The last campaign the traveler engaged with before booking. The
+              industry calls this last touch attribution. A booking is never counted
+              twice across campaigns.
             </dd>
           </div>
           <div>
@@ -65,8 +66,9 @@ export function AttributionExplainer({
             <dt className="font-medium text-ink-soft">What is not included</dt>
             <dd>
               These figures do not include reservations that came through
-              Booking.com, Expedia or other travel sites, walk-ins and phone
-              bookings, or direct bookings Autumn cannot connect to its marketing.
+              Booking.com, Expedia or other travel sites, bookings made at the front
+              desk or by phone, or direct bookings Autumn cannot connect to its
+              marketing.
               Your hotel&apos;s total business is larger than what this page shows.
             </dd>
           </div>

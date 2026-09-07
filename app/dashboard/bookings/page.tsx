@@ -14,7 +14,7 @@ import { SupabaseConfigError } from "@/lib/supabase/server";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "What's driving your bookings — Autumn",
+  title: "What's driving your bookings · Autumn",
 };
 
 export default async function BookingsPage({

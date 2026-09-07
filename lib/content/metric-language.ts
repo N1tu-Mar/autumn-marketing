@@ -14,7 +14,7 @@ export const METRIC_LANGUAGE = {
     label: "Times your ads were shown",
     shortLabel: "Ad appearances",
     technicalLabel: "Impressions",
-    help: "How many times one of your ads appeared to a traveler. This counts ad appearances, not people — one traveler can see an ad several times.",
+    help: "How many times one of your ads appeared to a traveler. This counts ad appearances, not people, because one traveler can see an ad several times.",
   },
   clicks: {
     label: "Clicks to learn more",
@@ -31,7 +31,7 @@ export const METRIC_LANGUAGE = {
   clickThroughRate: {
     label: "Ad views that led to a click",
     shortLabel: "Led to a click",
-    technicalLabel: "Click-through rate (CTR)",
+    technicalLabel: "Click through rate (CTR)",
     help: "Out of every 100 times an ad appeared, this is how many led to a click.",
   },
   bookingRate: {

@@ -1,7 +1,14 @@
-/** Display formatting. No business values live here — only how they read. */
+/** Display formatting. No business values live here, only how they read. */
+
+/**
+ * What a figure reads as when there is nothing to divide by. Spelled out
+ * rather than punctuated, so it means something on its own and to a screen
+ * reader.
+ */
+const NOT_AVAILABLE = "Not available";
 
 export function currency(value: number | null, options?: { cents?: boolean }): string {
-  if (value === null || !Number.isFinite(value)) return "—";
+  if (value === null || !Number.isFinite(value)) return NOT_AVAILABLE;
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
@@ -12,7 +19,7 @@ export function currency(value: number | null, options?: { cents?: boolean }): s
 
 /** 96,668 -> "96.7K". Used where the exact figure is not the point. */
 export function compactCount(value: number | null): string {
-  if (value === null || !Number.isFinite(value)) return "—";
+  if (value === null || !Number.isFinite(value)) return NOT_AVAILABLE;
   if (Math.abs(value) < 1000) return count(value);
   const thousands = value / 1000;
   return `${thousands >= 100 ? Math.round(thousands) : thousands.toFixed(1)}K`;
@@ -20,20 +27,20 @@ export function compactCount(value: number | null): string {
 
 /** $45,190 -> "$45.2K". */
 export function compactCurrency(value: number | null): string {
-  if (value === null || !Number.isFinite(value)) return "—";
+  if (value === null || !Number.isFinite(value)) return NOT_AVAILABLE;
   if (Math.abs(value) < 1000) return currency(value);
   const thousands = value / 1000;
   return `$${thousands >= 100 ? Math.round(thousands) : thousands.toFixed(1)}K`;
 }
 
 export function count(value: number | null): string {
-  if (value === null || !Number.isFinite(value)) return "—";
+  if (value === null || !Number.isFinite(value)) return NOT_AVAILABLE;
   return new Intl.NumberFormat("en-US").format(Math.round(value));
 }
 
 /** 0.0392 -> "3.9%". Percentages below 10% keep one decimal, above it none. */
 export function percent(value: number | null, forceDecimal = false): string {
-  if (value === null || !Number.isFinite(value)) return "—";
+  if (value === null || !Number.isFinite(value)) return NOT_AVAILABLE;
   const pct = value * 100;
   const decimals = forceDecimal || Math.abs(pct) < 10 ? 1 : 0;
   return `${pct.toFixed(decimals)}%`;
@@ -41,7 +48,7 @@ export function percent(value: number | null, forceDecimal = false): string {
 
 /** Signed change for a comparison, e.g. "+18%". */
 export function signedPercent(value: number | null): string {
-  if (value === null || !Number.isFinite(value)) return "—";
+  if (value === null || !Number.isFinite(value)) return NOT_AVAILABLE;
   const pct = value * 100;
   const decimals = Math.abs(pct) < 10 ? 1 : 0;
   return `${pct >= 0 ? "+" : "−"}${Math.abs(pct).toFixed(decimals)}%`;

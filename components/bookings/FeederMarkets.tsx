@@ -65,7 +65,7 @@ export function FeederMarkets({
           {compactCurrency(leader.booking_revenue)}
         </p>
         <p className="mt-2.5 max-w-prose text-[15px] text-ink-soft">
-          in direct booking revenue from travelers in {leader.guest_city} —{" "}
+          in direct booking revenue from travelers in {leader.guest_city}. That is{" "}
           <span className="tnum">{percent(leader.revenueShare)}</span> of your
           booking revenue
           {leaderChange ? (

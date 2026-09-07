@@ -124,3 +124,43 @@
 .rise {
   animation: rise 420ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
 }
+
+/*
+ * Help tips are quiet by design, which makes them easy to miss. Every eight
+ * seconds the ring expands once and fades, long enough to be noticed and short
+ * enough not to sit in the corner of the eye. Hover and focus stop it, so the
+ * cue never competes with the state it is advertising.
+ */
+@keyframes help-pulse {
+  0%,
+  100% {
+    border-color: var(--color-rule-strong);
+    box-shadow: 0 0 0 0 rgba(28, 102, 96, 0);
+    color: var(--color-ink-faint);
+  }
+  2% {
+    border-color: var(--color-harbor);
+    box-shadow: 0 0 0 0 rgba(28, 102, 96, 0.5);
+    color: var(--color-harbor);
+  }
+  14% {
+    border-color: var(--color-harbor);
+    box-shadow: 0 0 0 7px rgba(28, 102, 96, 0);
+    color: var(--color-harbor);
+  }
+  22% {
+    border-color: var(--color-rule-strong);
+    box-shadow: 0 0 0 0 rgba(28, 102, 96, 0);
+    color: var(--color-ink-faint);
+  }
+}
+
+.help-pulse {
+  animation: help-pulse 8s ease-out infinite;
+}
+
+.help-pulse:hover,
+.help-pulse:focus-visible,
+.group:hover .help-pulse {
+  animation: none;
+}

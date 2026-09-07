@@ -5,6 +5,9 @@
  * thing that makes a label make sense. Hover or keyboard focus reveals it, and
  * screen readers and touch users get the full text from the button's own
  * accessible name rather than from the panel.
+ *
+ * The ring pulses once every eight seconds (see .help-pulse in globals.css) so
+ * the affordance is discoverable without a permanent visual weight.
  */
 export function HelpTip({ label, text }: { label: string; text: string }) {
   return (
@@ -12,7 +15,7 @@ export function HelpTip({ label, text }: { label: string; text: string }) {
       <button
         type="button"
         aria-label={`What ${label} means: ${text}`}
-        className="ml-1 grid h-[15px] w-[15px] place-items-center rounded-full border border-rule-strong text-[10px] font-semibold leading-none text-ink-faint transition-colors hover:border-harbor hover:text-harbor"
+        className="help-pulse ml-1 grid h-[15px] w-[15px] place-items-center rounded-full border border-rule-strong text-[10px] font-semibold leading-none text-ink-faint transition-colors hover:border-harbor hover:text-harbor"
       >
         ?
       </button>
