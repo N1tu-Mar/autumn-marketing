@@ -293,11 +293,38 @@ downward as intended.
   brief, was tracked at the repo root where a reviewer opens it first.
 - **Fix:** Untracked and gitignored. The file remains on disk locally.
 
+### QA-10 — Trade vocabulary in the `autumn_actions` copy
+
+- **Severity:** Medium for the product argument. This section renders on the
+  main dashboard, so it is primary copy, and it was the last text on either
+  screen that assumed the reader knows advertising.
+- **Evidence:** Of ten seeded rows, eight carried terms the customer has no
+  reason to know: *"shoulder-season stay messaging"*, *"Non-brand search was
+  buying expensive clicks"*, *"Brand Protection now holds top position, at a
+  higher cost per click"*, *"the direct rate beats the OTAs"*, *"Trimmed pacing"*,
+  *"Refreshed harbor and beach creative"*, *"Moved budget from Discovery into
+  Metasearch"*, *"Opened Discovery into new metros"*. `shoulder-season` was also
+  the last hyphen anywhere in the rendered UI, and `in-state` was a second one
+  that only surfaced on ranges covering May 2026.
+- **Fix:** All ten rows rewritten in operator language, keeping the same facts,
+  dates, statuses and campaign links. *"Moved budget from Discovery into
+  Metasearch"* became *"Moved spending toward travelers ready to book"*;
+  *"Built shoulder-season stay messaging"* became *"Wrote new ads for September
+  and October"*; OTAs became "booking sites". Then `npm run seed`.
+- **Why the reseed was safe:** the copy is a static array of string literals,
+  and `makeActions` runs last, after every metric and booking is generated. The
+  number of RNG draws is unchanged, so no other row can move.
+- **Verification:** `npm run verify:data` output is **byte-identical** before and
+  after the reseed (`diff` reports no change) — same 1,489 bookings, 648
+  attributed, $384,268, 3,175 metric rows, 766 distinct dates, all 36 checks
+  passing. `npm run seed:verify` passes. Production picks the copy up without a
+  redeploy because both routes are `force-dynamic`. Swept six ranges across both
+  routes for hyphens, em dashes and en dashes in rendered prose: **zero**.
+
 ### Accepted, not fixed
 
 | Observation | Why it stands |
 |---|---|
-| `autumn_actions` copy contains *"shoulder-season"* and *"Non-brand search was buying expensive clicks"* | This is database content, not UI copy. Changing it means editing `supabase/generate.ts` and reseeding, which this pass is not allowed to do. It is the only remaining hyphen and the only remaining jargon in rendered text. Flagged for the user. |
 | The hero card's right half is empty at 1440 | Deliberate editorial whitespace. It is the single loudest signal that this is not a KPI wall, and filling it would undo the main product decision. |
 | `LoadFailure` shows the eyebrow "Your direct bookings" on both routes | Reads correctly on either screen; parameterising it adds a prop for no reader benefit. |
 | Campaign table shows click rate but not raw clicks | Deliberate demotion. Clicks are on the journey above; the table's job is booking outcomes. |
@@ -438,10 +465,10 @@ pages per session, the generic events list.
 "is Autumn working". Keeping them reachable but subordinate preserves the
 agency's ability to reconcile without making the owner walk past it.
 
-**Is anything still visible that requires too much interpretation?** One thing:
-the `autumn_actions` copy still says "shoulder-season stay messaging". It is the
-only phrase on either screen that assumes trade vocabulary, and it lives in the
-database rather than the UI.
+**Is anything still visible that requires too much interpretation?** No. The
+last holdout was the `autumn_actions` copy, which lives in the database rather
+than the UI and still used trade vocabulary. It was rewritten and reseeded; see
+QA-10.
 
 **Does the second screen support the first?** Yes. It opens by restating the
 same revenue figure in the same words, then answers only "what drove it" —

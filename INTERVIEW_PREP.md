@@ -191,7 +191,18 @@ reload. Or run `npm run verify:data` — 36 assertions against the hosted
 database, including that headline revenue equals the sum of booking rows and
 that ROAS equals revenue over spend.
 
-**"What's still wrong with it?"** One string in the `autumn_actions` table says
-"shoulder-season stay messaging" — the only phrase on either screen that assumes
-trade vocabulary. It is database content, so fixing it means editing the
-generator and reseeding.
+**"What's still wrong with it?"** The narrative thresholds are the weakest part:
+they decide when the product speaks up, and they are my judgment rather than
+anything observed. Attribution is also explained but not auditable — you can
+read how a booking gets credited, but you cannot click a number and see the
+bookings behind it.
+
+The last copy problem was worth catching: the "From your Autumn team" section
+reads from the database, and eight of its ten rows still spoke advertising —
+"Non-brand search was buying expensive clicks", "the direct rate beats the
+OTAs", "shoulder-season stay messaging". It is the one part of the product where
+the language layer could not reach, because the text is data. Rewriting it meant
+editing the generator and reseeding, and the reason that was safe is worth
+saying out loud: the copy is a static array and the actions are generated last,
+so the reseed reproduced every number byte for byte. I diffed the verifier
+output before and after to prove it.
