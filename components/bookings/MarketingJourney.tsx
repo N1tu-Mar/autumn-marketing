@@ -81,9 +81,13 @@ export function MarketingJourney({
                   <span className="tnum">{percent(rates[index].value)}</span>{" "}
                   {rates[index].text}
                   {rates[index].help ? (
+                    // These sit at the end of a line of text, so on a phone the
+                    // trigger lands near the right edge and a centred panel
+                    // hangs off the page. Opening leftward keeps it in view.
                     <HelpTip
                       label={rates[index].help.technicalLabel}
                       text={rates[index].help.help}
+                      align="end"
                     />
                   ) : null}
                 </span>

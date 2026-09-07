@@ -90,9 +90,16 @@ export function CampaignTable({ campaigns: all }: { campaigns: CampaignBreakdown
                   }`}
                 >
                   {column.metric.label}
+                  {/*
+                    The header sits at the top edge of a horizontally scrolling
+                    box, which clips anything above it, so the panel opens
+                    downward — and the last column opens leftward.
+                  */}
                   <HelpTip
                     label={column.metric.technicalLabel ?? column.metric.label}
                     text={column.metric.help}
+                    placement="bottom"
+                    align={column.key === "revenue" ? "end" : "center"}
                   />
                 </th>
               ))}

@@ -160,7 +160,6 @@
 }
 
 .help-pulse:hover,
-.help-pulse:focus-visible,
-.group:hover .help-pulse {
+.help-pulse:focus-visible {
   animation: none;
 }

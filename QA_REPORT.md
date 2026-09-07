@@ -28,7 +28,7 @@ live query. Nothing is marked PASS because the file exists.
 | ≥ 720 days of history | PASS | **766 distinct metric dates**, 2024-08-01 → 2026-09-05 | None |
 | Meaningful seeded data | PASS | Seasonality, campaign differentiation, 23 guest markets, capacity-constrained occupancy. See [Data realism](#final-data-realism-review) | None |
 | Seed script | PASS | `npm run seed` (deterministic, fixed seed), `npm run seed:verify` | None |
-| Responsive | PASS | Measured at 390 / 768 / 1440 with device emulation: `scrollWidth == viewport` on both routes, 0 elements past the edge | Fixed, see QA-2 |
+| Responsive | PASS | Measured at 320 / 360 / 390 / 414 / 768 / 1024 / 1440 with device emulation and tooltips forced visible: `scrollWidth == viewport` on both routes, 0 elements past either edge in all 14 combinations | Fixed, see QA-2 |
 | Maintainable | PASS | Data access → metrics → narrative → components, one definition per metric; two dead exports removed | Fixed, see QA-5 |
 | Loading states | PASS | `app/dashboard/loading.tsx` and `app/dashboard/bookings/loading.tsx`, each shaped like its own screen | Fixed, see QA-6 |
 | Empty states | PASS | Distinguishes "no marketing ran" from "marketing ran, no bookings". Verified on `?from=2024-01-01&to=2024-01-05` | None |
@@ -182,29 +182,53 @@ Every issue found in this pass, whether fixed or accepted.
   custom windows; the leading-market claim on the detail screen and the
   growth claim in the take no longer contradict each other.
 
-### QA-2 — Help tooltips forced horizontal scrolling on mobile
+### QA-2 — Help tooltips: three separate defects
 
 - **Severity:** Medium. Horizontal viewport overflow is an explicit fail.
-- **Evidence:** At a 390×844 emulated viewport, `/dashboard/bookings` measured
-  `documentElement.scrollWidth = 446` against a 390 viewport, with two elements
-  extending past the edge — both `HelpTip` panels in the marketing journey. The
-  panel is 15rem wide and centred on its trigger, so a trigger near the right
-  edge pushes it off the page. Inside the campaign table's `overflow-x-auto`
-  container the same panel was clipped instead of readable.
-- **Fix:** Below the `lg` breakpoint the panel is pinned to the bottom of the
-  viewport (`fixed inset-x-4 bottom-4`); at `lg` and above it is unchanged, so
-  the desktop design and the submission screenshots are untouched.
-- **Verification:** Re-measured on production at 390 / 768 / 1440 on both
-  routes: `scrollWidth == viewport` everywhere, 0 elements past the edge.
+
+**(a) Overflow on mobile.** At a 390×844 emulated viewport,
+`/dashboard/bookings` measured `documentElement.scrollWidth = 446` against a 390
+viewport, with two elements past the edge — both `HelpTip` panels in the
+marketing journey. The panel is 15rem wide and centred on its trigger, so a
+trigger near the right edge pushes it off the page.
+
+**(b) Clipping inside the campaign table.** The same panel opened upward from a
+header cell at the top of an `overflow-x-auto` container, which has no room
+above it, and the last column had none to its right.
+
+**(c) Every tooltip opening at once.** The component used an unnamed Tailwind
+`group`, which matches *any* ancestor carrying `group`. The campaign table is
+wrapped in `<details className="group …">`, so hovering the disclosure opened
+every header tooltip simultaneously.
+
+**Fixes.** (b) and (c) were fixed by the author while this pass was running: the
+group is now named (`group/tip`), and callers pass `placement` / `align` because
+only the caller knows what would clip the panel. I extended that for (a):
+`MarketingJourney`'s tips pass `align="end"`, and because no fixed anchor can
+work on a phone — centred it hangs off the right, right-anchored it hangs off
+the *left* at 320px once the sentence wraps — the panel is pinned to the bottom
+of the viewport below `sm` and only becomes trigger-anchored at `sm` and above.
+The two class sets are `sm:`-scoped so they cannot collide by source order. The
+campaign table only renders at `md` and up, so the author's placement props are
+unaffected.
+
+**Verification.** Measured with every tooltip forced visible, both routes, at
+320 / 360 / 390 / 414 / 768 / 1024 / 1440: `scrollWidth == viewport` and 0
+elements past either edge in all 14 combinations. Computed styles confirm the
+panel is `fixed` and pinned at 390 (left 16, width 358) and `absolute` and
+anchored to its trigger at 1440 (240 wide), with the table's tip opening
+downward as intended.
 
 ### QA-3 — Chart axis printed the same label on two gridlines
 
 - **Severity:** Low-Medium. A duplicated axis label is a misleading axis.
 - **Evidence:** On Last 30 days the revenue axis read `$0, $550, $1k, $2k, $2k`.
   Recharts chose ticks near 1,650 and 2,200, and both rounded to `$2k`.
-- **Fix:** `axisFormat` keeps one decimal below $10k, so those ticks read
-  `$1.7k` and `$2.2k`.
-- **Verification:** Recaptured the production chart; five distinct labels.
+- **Fix:** `axisFormat` keeps one decimal below $10k.
+- **Verification:** Read the rendered axis text out of the live DOM on all four
+  ranges. Last 30 days now reads `$0, $550, $1.1k, $1.6k, $2.2k`; Last 90 days
+  `$0, $3.5k, $7.0k, $11k, $14k`; YTD and Last 12 months `$0, $15k, $30k, $45k,
+  $60k`. No duplicate label on any range.
 
 ### QA-4 — Guest market disclosure promised more than it revealed
 
