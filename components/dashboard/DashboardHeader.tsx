@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { longDate } from "@/lib/analytics/format";
 import { PropertyMark } from "@/components/ui/PropertyMark";
+import { AutumnMark } from "@/components/ui/AutumnMark";
 import type { DateRange } from "@/types/analytics";
 import type { Property } from "@/types/database";
 import { RangeSelector } from "./RangeSelector";
@@ -39,7 +40,7 @@ export function DashboardHeader({
               </p>
             </div>
           </div>
-          <span className="spoken pt-1 text-[19px] text-harbor">Autumn</span>
+          <AutumnMark className="pt-1" />
         </div>
 
         <div className="mt-8 flex flex-wrap items-end justify-between gap-x-8 gap-y-5">
