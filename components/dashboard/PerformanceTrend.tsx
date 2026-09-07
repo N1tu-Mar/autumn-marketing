@@ -73,10 +73,14 @@ export function PerformanceTrend({
   const format = (value: number) =>
     metric === "revenue" ? currency(value) : count(value);
 
+  // Recharts picks its own tick values, and on a short range they land close
+  // together: 1,650 and 2,200 both round to "$2k", which puts the same label on
+  // two different gridlines. Keep a decimal until the axis is large enough for
+  // whole thousands to be distinct.
   const axisFormat = (value: number) =>
     metric === "revenue"
       ? value >= 1000
-        ? `$${Math.round(value / 1000)}k`
+        ? `$${(value / 1000).toFixed(value < 10_000 ? 1 : 0)}k`
         : `$${Math.round(value)}`
       : count(value);
 
