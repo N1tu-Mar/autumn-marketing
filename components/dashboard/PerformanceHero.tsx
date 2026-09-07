@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { greeting, headlineStatus } from "@/lib/analytics/insights";
-import { count, currency, signedPercent } from "@/lib/analytics/format";
+import { count, currency } from "@/lib/analytics/format";
+import { comparisonSentence } from "@/lib/content/metric-language";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { GuestJourney } from "./GuestJourney";
 import type { ComparedMetrics, DateRange } from "@/types/analytics";
@@ -8,9 +9,10 @@ import type { ComparedMetrics, DateRange } from "@/types/analytics";
 /**
  * The briefing.
  *
- * One dominant number, one supporting count, one comparison. Average booking
- * value is a footnote, not a fourth statistic — three growth badges side by
- * side make the reader compare them instead of reading the result.
+ * One dominant number, one supporting count, one comparison written as a
+ * sentence. Average booking value is a footnote, not a fourth statistic —
+ * three growth badges side by side make the reader compare them instead of
+ * reading the result.
  */
 export function PerformanceHero({
   metrics,
@@ -26,6 +28,10 @@ export function PerformanceHero({
   const { current } = metrics;
 
   if (current.bookings === 0) {
+    // Two different silences: nothing ran at all, or marketing ran and no
+    // booking followed. Saying which one it is spares the owner the guess.
+    const marketingRan = current.impressions > 0;
+
     return (
       <section className="card rise px-6 py-10 sm:px-12 sm:py-12">
         <h2 className="spoken text-[30px] text-ink sm:text-[34px]">
@@ -33,13 +39,23 @@ export function PerformanceHero({
         </h2>
         <div className="mt-7">
           <EmptyState
-            title="No direct bookings were attributed to Autumn in this period."
+            title={
+              marketingRan
+                ? "Your ads reached travelers in this period, but no direct bookings were connected to that activity."
+                : "No direct bookings were connected to Autumn marketing in this period."
+            }
             detail="Try a longer reporting period, or check back once campaigns have run for a full booking cycle."
           />
         </div>
       </section>
     );
   }
+
+  const revenueComparison = comparisonSentence(
+    metrics.revenue,
+    range,
+    "booking revenue",
+  );
 
   return (
     <section className="card rise overflow-hidden">
@@ -53,35 +69,37 @@ export function PerformanceHero({
         <p className="tnum mt-9 text-[52px] font-semibold leading-none tracking-[-0.035em] text-ink sm:text-[64px]">
           {currency(current.bookingRevenue)}
         </p>
-        <p className="mt-3 text-[15px] text-ink-soft">
-          in direct booking revenue through Autumn
+        <p className="mt-3 max-w-[38ch] text-[15px] text-ink-soft">
+          in direct booking revenue connected to Autumn marketing
         </p>
 
         <p className="mt-6 text-[17px] text-ink">
           <span className="tnum font-semibold">{count(current.bookings)}</span>{" "}
           direct bookings
-          {metrics.revenue.ratio !== null ? (
-            <>
-              <span aria-hidden="true" className="mx-2.5 text-rule-strong">
-                ·
-              </span>
-              <span
-                className={
-                  metrics.revenue.direction === "down" ? "text-clay" : "text-harbor"
-                }
-              >
-                <span aria-hidden="true">
-                  {metrics.revenue.direction === "down" ? "↓ " : "↑ "}
-                </span>
-                <span className="tnum">{signedPercent(metrics.revenue.ratio)}</span>{" "}
-                from the same period last year
-              </span>
-            </>
-          ) : null}
         </p>
 
-        <p className="mt-2 text-[13px] text-ink-faint">
-          Average booking value {currency(current.averageBookingValue)}
+        {revenueComparison ? (
+          // The sentence carries the meaning; colour only reinforces it, and
+          // clay is held back for a drop large enough to be worth a reaction.
+          <p
+            className={`mt-1.5 text-[15px] ${
+              metrics.revenue.direction === "up"
+                ? "text-harbor"
+                : (metrics.revenue.ratio ?? 0) <= -0.08
+                  ? "text-clay"
+                  : "text-ink-soft"
+            }`}
+          >
+            {revenueComparison}
+          </p>
+        ) : (
+          <p className="mt-1.5 text-[15px] text-ink-faint">
+            There is no comparable period last year yet.
+          </p>
+        )}
+
+        <p className="mt-4 text-[13px] text-ink-faint">
+          Each booking was worth {currency(current.averageBookingValue)} on average.
         </p>
       </div>
 

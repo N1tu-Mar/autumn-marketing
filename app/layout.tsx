@@ -16,9 +16,9 @@ const serif = Instrument_Serif({
 });
 
 export const metadata: Metadata = {
-  title: "Marketing performance — Autumn",
+  title: "Your direct bookings — Autumn",
   description:
-    "Direct booking revenue and bookings Autumn produced for your property.",
+    "The direct booking revenue and reservations Autumn's marketing brought your hotel.",
 };
 
 export default function RootLayout({

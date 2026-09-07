@@ -15,7 +15,7 @@ import { SupabaseConfigError } from "@/lib/supabase/server";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Marketing performance — Autumn",
+  title: "Your direct bookings — Autumn",
 };
 
 export default async function DashboardPage({
@@ -44,7 +44,7 @@ export default async function DashboardPage({
         property={property}
         range={range}
         dataThrough={dataThrough}
-        title="Marketing performance"
+        title="Your direct booking results"
       />
 
       <main className="mx-auto w-full max-w-[1200px] px-6 py-9 sm:px-10 sm:py-11">
@@ -57,7 +57,6 @@ export default async function DashboardPage({
 
         <div className="mt-16 sm:mt-20">
           <PerformanceTrend
-            title="Direct booking performance"
             current={trend.current}
             comparison={trend.comparison}
             grain={range.grain}
@@ -75,8 +74,9 @@ export default async function DashboardPage({
 
       <footer className="mt-6 border-t border-rule/70">
         <div className="mx-auto w-full max-w-[1200px] px-6 py-7 text-xs leading-relaxed text-ink-faint sm:px-10">
-          Direct bookings Autumn can connect to its marketing, counted on the day
-          each booking was made.
+          These figures cover direct bookings on your own website that Autumn can
+          connect to its marketing, counted on the day each booking was made.
+          Bookings through travel sites are not included.
         </div>
       </footer>
     </div>

@@ -93,9 +93,9 @@ describe("Autumn's take", () => {
       priorMarkets: [market("Chicago", 20_000, 20)],
     });
 
-    // 40,000 from 20,000 is exactly +100%.
+    // 40,000 from 20,000 is exactly +100%, and it is spelled out in words.
     assert.ok(result);
-    assert.match(result.body, /\+100%/);
+    assert.match(result.body, /100% higher/);
   });
 
   it("flags rising traffic with falling conversion, without claiming a cause", () => {
@@ -150,7 +150,9 @@ describe("Autumn's take", () => {
     });
 
     assert.ok(result);
-    assert.match(result.headline, /Brand demand/);
+    // The traveler, not the industry term, is the subject of the sentence.
+    assert.match(result.headline, /Travelers already looking for your hotel/);
+    assert.doesNotMatch(result.headline, /Brand Protection/);
     assert.equal(result.evidence[0].type, "campaign");
   });
 });

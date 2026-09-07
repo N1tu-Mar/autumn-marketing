@@ -5,7 +5,7 @@
 export function SetupNotice({ message }: { message: string }) {
   return (
     <main className="mx-auto w-full max-w-xl px-6 py-24">
-      <p className="eyebrow">Marketing performance</p>
+      <p className="eyebrow">Your direct bookings</p>
       <h1 className="spoken mt-3 text-[32px] text-ink">
         This dashboard is not connected to its database yet
       </h1>

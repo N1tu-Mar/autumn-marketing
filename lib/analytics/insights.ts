@@ -5,7 +5,8 @@ import type {
   Insight,
   MarketBreakdown,
 } from "@/types/analytics";
-import { compactCurrency, currency, percent, signedPercent } from "./format";
+import { CAMPAIGN_COPY } from "@/lib/content/campaign-copy";
+import { compactCurrency, currency, percent } from "./format";
 
 /**
  * Rule-based insights.
@@ -29,6 +30,12 @@ const THRESHOLDS = {
 };
 
 const MIN_BOOKINGS_FOR_MARKET_INSIGHT = 5;
+
+/** "51% higher" / "24% lower" — never a bare signed number. */
+function changeInWords(ratio: number | null | undefined): string {
+  if (ratio == null || !Number.isFinite(ratio)) return "not comparable";
+  return `${percent(Math.abs(ratio))} ${ratio >= 0 ? "higher" : "lower"}`;
+}
 
 /** At most two. A third only earns its place if the first two are thin. */
 const MAX_INSIGHTS = 2;
@@ -60,10 +67,10 @@ export function generateInsights(input: {
       id: "traffic-up-conversion-down",
       topic: "conversion",
       tone: "concern",
-      title: "More travelers are visiting, but fewer are booking",
+      title: "More travelers are reaching your website, but fewer are booking",
       detail:
-        `Website visits rose ${signedPercent(visitsUp)}, while the share of visitors who booked ` +
-        `slipped from ${percent(previous.bookingRate)} to ${percent(current.bookingRate)}.`,
+        `Visits to your website were ${changeInWords(visitsUp)} than last year, while the share of ` +
+        `visitors who booked moved from ${percent(previous.bookingRate)} to ${percent(current.bookingRate)}.`,
     });
   }
 
@@ -87,8 +94,8 @@ export function generateInsights(input: {
       tone: "positive",
       title: `${risingMarket.guest_city} led the growth`,
       detail:
-        `Travelers from ${risingMarket.guest_city} booked ${compactCurrency(risingMarket.booking_revenue)} of direct revenue, ` +
-        `${signedPercent(risingMarket.revenueDelta?.ratio ?? null)} against the same period last year.`,
+        `Travelers from ${risingMarket.guest_city} booked ${compactCurrency(risingMarket.booking_revenue)} of direct booking revenue, ` +
+        `${changeInWords(risingMarket.revenueDelta?.ratio)} than the same period last year.`,
     });
   }
 
@@ -109,8 +116,8 @@ export function generateInsights(input: {
       tone: "concern",
       title: `${fallingMarket.guest_city} sent fewer guests`,
       detail:
-        `Revenue from ${fallingMarket.guest_city} fell ${signedPercent(fallingMarket.revenueDelta?.ratio ?? null)} ` +
-        `to ${compactCurrency(fallingMarket.booking_revenue)}.`,
+        `Booking revenue from ${fallingMarket.guest_city} was ${changeInWords(fallingMarket.revenueDelta?.ratio)} ` +
+        `than last year, at ${compactCurrency(fallingMarket.booking_revenue)}.`,
     });
   }
 
@@ -120,10 +127,10 @@ export function generateInsights(input: {
       id: `campaign-${topCampaign.campaign_id}`,
       topic: "campaign",
       tone: "neutral",
-      title: `${topCampaign.campaign_name} was your strongest strategy`,
+      title: `${CAMPAIGN_COPY[topCampaign.campaign_type].subject} brought in the most`,
       detail:
-        `It produced ${percent(topCampaign.revenueShare)} of direct booking revenue, ` +
-        `${compactCurrency(topCampaign.booking_revenue)} in total.`,
+        `${topCampaign.campaign_name} produced ${percent(topCampaign.revenueShare)} of your direct booking ` +
+        `revenue, ${compactCurrency(topCampaign.booking_revenue)} in total.`,
     });
   }
 
@@ -148,7 +155,7 @@ export function generateInsights(input: {
       title: "Each booking is worth more",
       detail:
         `The average booking rose to ${currency(current.averageBookingValue)}, ` +
-        `${signedPercent(valueChange)} against the same period last year.`,
+        `${changeInWords(valueChange)} than the same period last year.`,
     });
   }
 
@@ -164,7 +171,7 @@ export function generateInsights(input: {
       detail:
         revenueChange === null
           ? `${currency(current.bookingRevenue)} in direct booking revenue. There is no comparable period last year yet.`
-          : `Direct booking revenue is within ${percent(Math.abs(revenueChange), true)} of the same period last year, and no market or strategy shifted materially.`,
+          : `Direct booking revenue is within ${percent(Math.abs(revenueChange), true)} of the same period last year, and no guest market or type of marketing shifted materially.`,
     });
   }
 

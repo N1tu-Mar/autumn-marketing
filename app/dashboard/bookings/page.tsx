@@ -46,7 +46,8 @@ export default async function BookingsPage({
         title="What's driving your bookings"
         breadcrumb={{
           href: `/dashboard${rangeQuery(range)}`,
-          label: "Booking performance",
+          parentLabel: "Your direct bookings",
+          currentLabel: "What's driving them",
         }}
       />
 
@@ -56,17 +57,21 @@ export default async function BookingsPage({
         mechanics, then everything technical folded away.
       */}
       <main className="mx-auto w-full max-w-[1200px] px-6 py-10 sm:px-10 sm:py-12">
-        <BookingSummary metrics={metrics} propertyName={propertyName} />
+        <BookingSummary
+          metrics={metrics}
+          range={range}
+          propertyName={propertyName}
+        />
 
         <div className="mt-16 border-t border-rule/70 pt-14 sm:mt-20 sm:pt-16">
-          <LeadingStrategy campaigns={campaigns} propertyName={propertyName} />
+          <LeadingStrategy campaigns={campaigns} />
         </div>
 
         <div className="mt-16 border-t border-rule/70 pt-14 sm:mt-20 sm:pt-16">
-          <FeederMarkets markets={markets} />
+          <FeederMarkets markets={markets} range={range} />
         </div>
 
-        <div className="mt-16 grid gap-12 border-t border-rule/70 pt-14 sm:mt-20 sm:pt-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16">
+        <div className="mt-16 max-w-2xl border-t border-rule/70 pt-14 sm:mt-20 sm:pt-16">
           <MarketingJourney metrics={metrics.current} propertyName={propertyName} />
         </div>
 
@@ -75,7 +80,7 @@ export default async function BookingsPage({
         </div>
 
         <div className="mt-14 border-t border-rule/70 pt-8 sm:mt-16">
-          <AttributionExplainer range={range} />
+          <AttributionExplainer range={range} timezone={property.timezone} />
         </div>
       </main>
     </div>

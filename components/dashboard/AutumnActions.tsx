@@ -25,7 +25,8 @@ export function AutumnActions({
     <Band title="From your Autumn team">
       {actions.length === 0 ? (
         <p className="max-w-prose text-[15px] leading-relaxed text-ink-soft">
-          No recorded activity for this period yet.
+          Autumn has not recorded any changes to your marketing up to the end of
+          this period.
         </p>
       ) : (
         <ol className="max-w-prose space-y-7">
@@ -44,6 +45,11 @@ export function AutumnActions({
           ))}
         </ol>
       )}
+
+      {/* The most useful sentence in the section, and the easiest to forget. */}
+      <p className="mt-8 max-w-prose border-t border-rule/60 pt-5 text-[14px] leading-relaxed text-ink-soft">
+        Autumn runs this work for you. No action needed from you.
+      </p>
     </Band>
   );
 }

@@ -5,8 +5,8 @@ import type {
   Insight,
   MarketBreakdown,
 } from "@/types/analytics";
-import { CAMPAIGN_COPY } from "./campaign-copy";
-import { compactCurrency, currency, percent, signedPercent } from "./format";
+import { CAMPAIGN_COPY } from "@/lib/content/campaign-copy";
+import { compactCurrency, currency, percent } from "./format";
 
 /**
  * Autumn's take.
@@ -34,6 +34,12 @@ const THRESHOLDS = {
 };
 
 const MIN_BOOKINGS = 5;
+
+/** "51% higher" / "24% lower" — a signed number nobody has to decode. */
+function changeInWords(ratio: number | null | undefined): string {
+  if (ratio == null || !Number.isFinite(ratio)) return "not comparable";
+  return `${percent(Math.abs(ratio))} ${ratio >= 0 ? "higher" : "lower"}`;
+}
 
 /** The strategy producing the most booking revenue, if it produced any. */
 export function leadingStrategy(
@@ -137,10 +143,10 @@ export function generateAutumnTake(input: {
     return {
       headline: "More travelers are arriving, but fewer are booking.",
       body:
-        `Website visits are ${signedPercent(visitsUp)} against the same period last year, while the share ` +
-        `who booked moved from ${percent(previous.bookingRate)} to ${percent(current.bookingRate)}. ` +
+        `Visits to your website are ${changeInWords(visitsUp)} than the same period last year, while the share ` +
+        `of visitors who booked moved from ${percent(previous.bookingRate)} to ${percent(current.bookingRate)}. ` +
         (strategy
-          ? `${CAMPAIGN_COPY[strategy.campaign_type].label} still produced ${percent(strategy.revenueShare)} of booking revenue.`
+          ? `${CAMPAIGN_COPY[strategy.campaign_type].subject} still produced ${percent(strategy.revenueShare)} of your direct booking revenue.`
           : ""),
       tone: "watch",
       evidence: [
@@ -161,7 +167,7 @@ export function generateAutumnTake(input: {
       body:
         `${currency(current.bookingRevenue)} against ${currency(previous.bookingRevenue)} in the same period last year. ` +
         (falling
-          ? `${falling.guest_city} accounts for the largest part of the shortfall, ${signedPercent(falling.revenueDelta?.ratio ?? null)} on last year.`
+          ? `${falling.guest_city} accounts for the largest part of it, with booking revenue ${changeInWords(falling.revenueDelta?.ratio)} than last year.`
           : `The decline is spread across markets rather than concentrated in one.`),
       tone: "watch",
       evidence: [
@@ -179,18 +185,15 @@ export function generateAutumnTake(input: {
   if (strategy && strategy.revenueShare >= THRESHOLDS.strategyShare) {
     const copy = CAMPAIGN_COPY[strategy.campaign_type];
     const growthClause = growing
-      ? ` ${growing.guest_city} was your strongest guest market, with booking revenue ${signedPercent(growing.revenueDelta?.ratio ?? null)} on last year.`
+      ? ` ${growing.guest_city} was your strongest guest market, with booking revenue ${changeInWords(growing.revenueDelta?.ratio)} than the same period last year.`
       : top
         ? ` ${top.guest_city} remained your largest guest market at ${percent(top.revenueShare)} of booking revenue.`
         : "";
 
     return {
-      headline:
-        strategy.campaign_type === "brand_protection"
-          ? "Brand demand remains your biggest advantage."
-          : `${copy.guestLabel} is your strongest source of bookings.`,
+      headline: `${copy.subject} brought in the most booking revenue.`,
       body:
-        `${copy.sourcePhrase} produced ${percent(strategy.revenueShare)} of direct booking revenue, ` +
+        `They produced ${percent(strategy.revenueShare)} of your direct booking revenue, ` +
         `${compactCurrency(strategy.booking_revenue)} in total.${growthClause}`,
       tone: "positive",
       evidence: [
@@ -218,7 +221,7 @@ export function generateAutumnTake(input: {
       headline: `${growing.guest_city} accounted for most of your growth.`,
       body:
         `Travelers from ${growing.guest_city} booked ${compactCurrency(growing.booking_revenue)}, ` +
-        `${signedPercent(growing.revenueDelta?.ratio ?? null)} on the same period last year, and now make up ` +
+        `${changeInWords(growing.revenueDelta?.ratio)} than the same period last year, and now make up ` +
         `${percent(growing.revenueShare)} of direct booking revenue at ${propertyName}.`,
       tone: "positive",
       evidence: [
@@ -241,7 +244,7 @@ export function generateAutumnTake(input: {
         ? `${currency(current.bookingRevenue)} in direct booking revenue so far, with no comparable period last year yet. `
         : `Booking revenue is within ${percent(Math.abs(revenueChange), true)} of the same period last year. `) +
       (strategy
-        ? `${CAMPAIGN_COPY[strategy.campaign_type].label} continues to produce the largest share, at ${percent(strategy.revenueShare)}.`
+        ? `${CAMPAIGN_COPY[strategy.campaign_type].subject} continue to bring in the largest share, at ${percent(strategy.revenueShare)}.`
         : ""),
     tone: "neutral",
     evidence: [
