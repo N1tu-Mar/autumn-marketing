@@ -18,14 +18,14 @@ Booking detail: <https://autumn-marketing.vercel.app/dashboard/bookings>
 
 In `submission/screenshots/`:
 
-| File | What it shows |
-|---|---|
-| `redesigned-main-dashboard.png` | Redesigned main dashboard, 1440 wide, full page, Last 30 days |
-| `redesigned-booking-detail.png` | Connected booking detail screen, 1440×1100 |
-| `redesigned-booking-detail-full.png` | Same screen, full page — archive/optional |
-| `main-mobile.png` | Main dashboard at 390×844 — optional responsive evidence |
-| `detail-mobile.png` | Detail screen at 390×844 — optional responsive evidence |
-| `reference-dashboard.png` | **Not present. See below.** |
+| File                                 | What it shows                                                 |
+| ------------------------------------ | ------------------------------------------------------------- |
+| `redesigned-main-dashboard.png`      | Redesigned main dashboard, 1440 wide, full page, Last 30 days |
+| `redesigned-booking-detail.png`      | Connected booking detail screen, 1440×1100                    |
+| `redesigned-booking-detail-full.png` | Same screen, full page — archive/optional                     |
+| `main-mobile.png`                    | Main dashboard at 390×844 — optional responsive evidence      |
+| `detail-mobile.png`                  | Detail screen at 390×844 — optional responsive evidence       |
+| `reference-dashboard.png`            | **Not present. See below.**                                   |
 
 All captures are from the live production deployment at a 2× device pixel ratio.
 
@@ -64,49 +64,12 @@ No login required. Both routes are publicly reachable.
 
 ## Final state
 
-| Command | Result |
-|---|---|
-| `npm run lint` | Clean |
-| `npx tsc --noEmit` | Clean |
-| `npm run build` | Passes, both routes dynamic |
-| `npm test` | 9/9 |
-| `npm run verify:data` | All 36 checks passed |
+| Command               | Result                      |
+| --------------------- | --------------------------- |
+| `npm run lint`        | Clean                       |
+| `npx tsc --noEmit`    | Clean                       |
+| `npm run build`       | Passes, both routes dynamic |
+| `npm test`            | 9/9                         |
+| `npm run verify:data` | All 36 checks passed        |
 
 766 days of history (requirement: 720). Production current with `main`.
-
-## Email draft
-
-> **Subject:** Autumn Design Engineer Take-Home 2 — [Your Name]
->
-> Hi Aaryan,
->
-> Thanks again for the opportunity. Here's my completed Design Engineer
-> Take-Home 2:
->
-> Live demo: https://autumn-marketing.vercel.app/dashboard
-> Repository: https://github.com/N1tu-Mar/autumn-marketing
->
-> The premise I worked from is that Autumn's customer is a hotel operator rather
-> than a performance marketer, so the main screen is a short briefing built
-> around direct booking revenue, what changed against the same period last year,
-> and what Autumn is doing about it. The connected screen answers the natural
-> follow-up — what's actually driving those bookings — without crowding the
-> overview.
->
-> It's backed by a hosted Supabase Postgres database with 766 days of modeled
-> history for a real, publicly documented property. Nothing on either screen is
-> hardcoded; every figure is aggregated at request time, and `npm run verify:data`
-> checks that against the raw rows.
->
-> I've attached:
-> - the reference dashboard
-> - my redesigned main dashboard
-> - the connected booking-detail screen
->
-> Setup, database and seeding instructions, and notes on what's real versus
-> modeled are all in the README.
->
-> Best,
-> [Your Name]
-
-*Draft only. Nothing has been sent.*
